@@ -112,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-13 after initialization*
+*Last updated: 2026-05-14 after Phase 1 (Vendored FTMS Codec) completion — `encodeIndoorBikeData` ships in `src/ftms/`, gated by hand-computed byte fixtures + spec-cited MIT decoder round-trip + nRF Connect manual verification. No Active requirements moved to Validated yet (all PROJECT-level requirements are FakeTransport / VeloWorld E2E, which arrive in Phase 4–5).*
