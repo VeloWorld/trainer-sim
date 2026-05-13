@@ -1,0 +1,37 @@
+name: CI
+
+# Runs on push/PR to main; matrix covers macOS + Ubuntu (D-13). Node 24 only —
+# CONTEXT.md D-13/D-16 lock Node 24 LTS to match VeloWorld parity. The Node 22+24
+# matrix idea is in CONTEXT.md "Deferred Ideas"; do not add it here.
+#
+# publint and attw run as SEPARATE steps (not bundled into `npm run validate`)
+# so the CI UI shows distinct red/green per check (D-12).
+#
+# fail-fast: false — without it, a macOS-only failure cancels the Ubuntu leg
+# (or vice versa), masking platform-specific bugs we explicitly want to surface.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run validate:publint
+      - run: npm run validate:attw
