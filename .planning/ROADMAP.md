@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-02-PLAN.md — Hand-rolled spec-cited MIT FTMS decoder fixture (test/fixtures/ftms-decoder.ts) — Wave 1
 - [x] 01-03-PLAN.md — Implement encodeIndoorBikeData (src/ftms/indoor-bike-data.ts) + re-export from src/index.ts — Wave 2
 - [x] 01-04-PLAN.md — Byte-correctness + round-trip + FIELDS-invariants test suite + publint/attw validate — Wave 3
-- [ ] 01-05-PLAN.md — GitHub Actions CI (macOS + Ubuntu, Node 24) + nRF Connect manual verification — Wave 3
+- [x] 01-05-PLAN.md — GitHub Actions CI (macOS + Ubuntu, Node 24) + nRF Connect manual verification — Wave 3
 **Notes**:
   - Risk: encoding traps (sint16, half-rpm, inverted bit-0, big-endian default) are all silent — naive unit tests pass but real decoders disagree. Phase 1 done is gated on three independent checks, not one: hand-computed byte fixtures (catches spec mis-reads), spec-cited MIT decoder round-trip (catches encoder/decoder asymmetry and future regressions), and one-shot nRF Connect (the only genuinely third-party check).
   - Decoder harness resolved 2026-05-13: hand-rolled MIT decoder in `test/fixtures/ftms-decoder.ts`, authored from the SIG spec PDF. Auuki was rejected — it is AGPL-3.0 (prior CONTEXT entries calling it MIT-compatible were wrong); vendoring or submoduling it would contaminate this MIT repo. PyFTMS and an Auuki submodule were considered and declined as heavier alternatives that don't materially improve coverage over the chosen three-gate approach.
