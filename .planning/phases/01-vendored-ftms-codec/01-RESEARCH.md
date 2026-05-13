@@ -1058,22 +1058,25 @@ These directives from CLAUDE.md are non-negotiable for this phase. The planner M
 | A6 | `moduleResolution: "bundler"` is the right choice over `"node16"` for this tsup-built library | tsconfig template | LOW — both work; `bundler` is simpler for tsup-built libs in 2026; switching is a one-line config change. |
 | A7 | Auuki's GPL/AGPL contamination concern is enough of a blocker to recommend hand-rolled decoder over vendoring | Auuki Decoder Consumption | **MEDIUM** — this is a license-interpretation judgment. The user may decide the AGPL test fixture is acceptable; surface the question via `/gsd-discuss-phase` amendment. The technical recommendation (hand-rolled MIT decoder) is sound either way. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **D-03 license correction.** CONTEXT.md D-03 states Auuki is MIT-compatible; verified findings show it is **AGPL-3.0**. Does the user want to (a) hand-roll a tiny MIT decoder under `test/fixtures/`, (b) submodule Auuki and accept legal review, or (c) pick a different decoder source (PyFTMS subprocess, etc.)?
+1. **D-03 license correction.** CONTEXT.md D-03 originally stated Auuki is MIT-compatible; verified findings show it is **AGPL-3.0**. Does the user want to (a) hand-roll a tiny MIT decoder under `test/fixtures/`, (b) submodule Auuki and accept legal review, or (c) pick a different decoder source (PyFTMS subprocess, etc.)?
    - What we know: Auuki is AGPL-3.0, has no `name` in `package.json`, and `npm install github:` is therefore impossible.
    - What's unclear: User's tolerance for AGPL test fixtures in an MIT repo.
    - Recommendation: Surface via discuss-phase amendment; default to Option D (hand-rolled MIT decoder).
+   - **RESOLVED (2026-05-13):** CONTEXT.md D-01/D-02/D-03/D-03b/D-03c — Auuki rejected as AGPL; FTMS-05 is now a three-gate strategy (hand-computed byte fixtures + spec-cited hand-rolled MIT decoder at `test/fixtures/ftms-decoder.ts` + one-shot manual nRF Connect verification). Reflected in plans 01-02 (decoder fixture), 01-04 (round-trip), 01-05 (nRF Connect).
 
 2. **TypeScript 6 adoption (deferred but flagged).** TS 6.0.3 is now `latest` on npm (2026-04-16). CLAUDE.md and CONTEXT.md lock 5.9. Should Phase 1 reconfirm 5.9 or open a side-question for the user?
    - What we know: 5.9.3 is the current 5.x maximum (2025-09-30); 6.0.3 is the absolute latest (2026-04-16).
    - What's unclear: Whether VeloWorld is on TS 5 or 6 — parity matters.
    - Recommendation: Stay on 5.9 for Phase 1 (the lock); note this in the plan-phase output for re-evaluation at next phase transition.
+   - **RESOLVED (2026-05-13):** Phase 1 stays on TypeScript 5.9 per the existing CLAUDE.md / CONTEXT.md lock; plan 01-01 pins `typescript@~5.9.3`. Re-evaluate at next phase transition once VeloWorld TS version is confirmed.
 
 3. **Speed-field encoding edge cases.** D-06 requires testing the speed-present branch, but the field-order in the payload (Speed precedes Cadence per Auuki/PyFTMS) means a speed-present payload is 8 bytes, not 6. Does the planner need additional reference payloads beyond Reference Payload 5?
    - What we know: One speed-present payload is enough to validate the inversion logic and the additional 2-byte offset.
    - What's unclear: Whether Phase 1's success criteria (which mention only `{power, cadence}` payloads in success criterion 1) want speed-present byte-correctness coverage too.
    - Recommendation: Include Reference Payload 5 as a byte-correctness fixture; the planner can downscope if it conflicts with task budget.
+   - **RESOLVED (2026-05-13):** Reference Payload 5 (`{power: 100, cadence: 60, speed: 30}`) is included as a byte-correctness fixture in plan 01-04 Task 1, satisfying both the bit-0 inversion branch (D-06) and speed-field byte coverage. No additional payloads required for Phase 1.
 
 ## Sources
 
