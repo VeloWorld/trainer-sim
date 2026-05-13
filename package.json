@@ -1,0 +1,51 @@
+{
+  "name": "trainer-sim",
+  "version": "0.0.1",
+  "description": "Standalone Node.js library that impersonates a BLE FTMS smart trainer by replaying pre-recorded FIT files.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
+    "validate:publint": "publint",
+    "validate:attw": "attw --pack .",
+    "validate": "npm run build && npm run validate:publint && npm run validate:attw",
+    "prepublishOnly": "npm run validate && npm test"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "~0.18.2",
+    "@types/node": "~24.12.4",
+    "publint": "~0.3.21",
+    "tsup": "~8.5.1",
+    "tsx": "~4.21.0",
+    "typescript": "~5.9.3",
+    "vitest": "~4.1.6"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agni21/trainer-sim.git"
+  }
+}
