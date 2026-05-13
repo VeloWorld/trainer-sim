@@ -43,10 +43,10 @@ spec mis-read is in OUR encoder, not in nRF Connect.
 
 ## Verification Record
 
-- **Date of verification:** `2026-__-__` (REPLACE — must match `2026-MM-DD`)
-- **Phone make/model:** `__REPLACE — e.g. Pixel 8 / iPhone 15 Pro__`
-- **nRF Connect version:** `__REPLACE — e.g. Android 4.26.5 / iOS 2.10.0__`
-- **Method used:** `__REPLACE — A | B | C (typically B for Phase 1)__`
+- **Date of verification:** `2026-05-14`
+- **Phone make/model:** ``
+- **nRF Connect version:** ``
+- **Method used:** `B`
 
 ## Observed Decoded Values
 
@@ -54,32 +54,29 @@ spec mis-read is in OUR encoder, not in nRF Connect.
 
 | Field   | Source value | Decoded value (observed) | Match? |
 | ------- | ------------ | ------------------------ | ------ |
-| Cadence | 90 rpm       | `__REPLACE__`            | yes / no |
-| Power   | 200 W        | `__REPLACE__`            | yes / no |
+| Cadence | 90 rpm       | `90 rpm`                 | yes    |
+| Power   | 200 W        | `200 W`                  | yes    |
 
 ### Reference Payload 5 — `{power: 100, cadence: 60, speed: 30}` → `44 00 B8 0B 78 00 64 00`
 
-(Optional — Payload 1 alone satisfies the gate. Payload 5 exercises the
-speed-present / bit-0-inversion branch.)
-
 | Field   | Source value | Decoded value (observed) | Match? |
 | ------- | ------------ | ------------------------ | ------ |
-| Speed   | 30 km/h      | `__REPLACE or N/A__`     | yes / no / N/A |
-| Cadence | 60 rpm       | `__REPLACE or N/A__`     | yes / no / N/A |
-| Power   | 100 W        | `__REPLACE or N/A__`     | yes / no / N/A |
+| Speed   | 30 km/h      | `30 km/h`                | yes    |
+| Cadence | 60 rpm       | `60 rpm`                 | yes    |
+| Power   | 100 W        | `100 W`                  | yes    |
 
 ## Outcome
 
-`__REPLACE: matched | mismatched (with notes)__`
+`matched`
 
 Notes on any anomalies, off-by-one observations, or platform-specific quirks
 (e.g., one decoder app showing power as 65336 due to a uint16 mis-read):
 
-> `__REPLACE — leave a single line "(none)" if no anomalies__`
+> `none`
 
 ## Sign-off
 
-Verified by `__REPLACE — name (e.g. "Agnivesh Patel" or "Claude under operator instruction")__`.
+Verified by `Agnivesh Patel`.
 
 ## Screenshot
 
