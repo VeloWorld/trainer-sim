@@ -71,7 +71,7 @@
 | Open: `>=22.12` and matrix-test 22 + 24 in CI | Catches consumer-version regressions; ~2x CI minutes | |
 
 **User's choice:** Node 24 LTS.
-**Notes:** Overrides STACK.md's earlier Node 22 recommendation. PROJECT.md update for Node 24 + `@stoprocent/bleno` (the latter already pending) handled at next `/gsd-transition`. CI matrix re-evaluation deferred until VeloWorld's actual Node version is confirmed in Phase 5.
+**Notes:** VeloWorld is confirmed on Node 24, so this IS the parity pick (not an override). STACK.md, SUMMARY.md, ROADMAP.md, REQUIREMENTS.md, and CLAUDE.md updated to Node 24 throughout. CI is Node 24 only; matrix re-introduction deferred until/unless a future non-VeloWorld consumer requires Node 22.
 
 ---
 
@@ -83,7 +83,7 @@
 
 ## Deferred Ideas
 
-- Node 22 + 24 CI matrix — defer to Phase 5 if VeloWorld is on Node 22.
+- Node 22 + 24 CI matrix — closed: VeloWorld is on Node 24; matrix not needed unless a future non-VeloWorld consumer demands Node 22.
 - Buffer pool / pre-allocation in encoder — v2 concern (PITFALLS.md performance #2).
 - Second decoder (PyFTMS) in CI alongside Auuki — revisit if Auuki produces a false positive.
 - Lint-ban on raw `DataView.setUint16` — avoided by using `Buffer.write*LE`; revisit if encoder ever uses raw `DataView` writes.

@@ -76,12 +76,12 @@ they do not bootstrap it.
 ### Project Bootstrap Scope
 - **D-11:** Phase 1 stands up the **full package skeleton**: `package.json`, `tsconfig.json` (strict, `moduleResolution: "bundler"` or `"node16"` per tsup recommendation), `tsup.config.ts` (dual ESM+CJS, generates `.d.ts` and `.d.cts`), `vitest.config.ts`, `src/index.ts` (re-exports `encodeIndoorBikeData` and `IndoorBikeRecord`), `package.json` `exports` field, `.gitignore`, basic `README.md`.
 - **D-12:** `publint` and `@arethetypeswrong/cli` (`attw`) wired into `npm run validate` (or equivalent) and run in CI on every push. This pulls API-07 forward from Phase 4 — Phase 4 will *verify* and not bootstrap.
-- **D-13:** GitHub Actions CI matrix on **macOS + Linux**, Node 24 only initially. (Matrix-test of Node 22 + 24 was considered; deferred — re-evaluate when VeloWorld's actual Node version is confirmed.)
+- **D-13:** GitHub Actions CI on **macOS + Linux**, Node 24 only. VeloWorld is confirmed on Node 24; no Node 22 leg is needed for v1. Re-evaluate only if a future consumer requires Node 22 parity.
 - **D-14:** No native deps in Phase 1. `@stoprocent/bleno` is v2; nothing in Phase 1 imports it directly or transitively.
 - **D-15:** ESLint setup is **deferred to Phase 4** unless lint-blocking patterns emerge during Phase 1 (e.g., banning raw `DataView.setUint16` per D-10). If a ban is needed, add a minimal ESLint config in Phase 1 with that one rule and grow it later.
 
 ### Node Version
-- **D-16:** `engines: ">=24.0"` (Node 24 LTS "Krypton"). Latest LTS pick. CI runs on Node 24 only at the start; widen to a 22+24 matrix if/when VeloWorld parity demands it. PROJECT.md and STACK.md previously suggested Node 22 for VeloWorld parity — that recommendation is overridden by this decision; downstream phases inherit Node 24.
+- **D-16:** `engines: ">=24.0"` (Node 24 LTS "Krypton"). VeloWorld is confirmed on Node 24, so this IS the parity pick. CI runs on Node 24 only. Earlier STACK.md/SUMMARY.md text suggesting Node 22 has been updated; downstream phases inherit Node 24.
 
 ### Claude's Discretion
 - File-level layout inside `src/ftms/` (single file vs splitting `fields.ts` / `encode.ts`) — pick what reads cleanest after the encoder is written; either path satisfies the field-table-as-source-of-truth requirement (D-09).
@@ -142,7 +142,7 @@ they do not bootstrap it.
 <specifics>
 ## Specific Ideas
 
-- **"Why Node 22, why not 24?"** — User flagged this during gray-area selection. Resolved by D-16: pick Node 24 LTS now, override prior STACK.md recommendation. PROJECT.md should be updated at the next phase transition to reflect Node 24 + `@stoprocent/bleno` (the latter already noted in research/SUMMARY.md as a pending PROJECT.md update).
+- **"Why Node 22, why not 24?"** — User flagged this during gray-area selection and confirmed VeloWorld is on Node 24. Resolved by D-16: Node 24 IS the parity pick. STACK.md, SUMMARY.md, ROADMAP.md, REQUIREMENTS.md, and CLAUDE.md have been updated to Node 24 throughout. PROJECT.md should still get a refresh at the next phase transition to reflect `@stoprocent/bleno` (already noted in research/SUMMARY.md as a pending PROJECT.md update).
 - The encoder MUST be authored such that adding a speed-emit code path in v2 is a one-method change (the type already accepts `speed?`; bit-0 logic already branches). Don't paint future-self into a corner.
 - Auuki is an app, not a published library — the planner needs a concrete answer on how to import its decoder (D-03). Recommended: vendored copy with pinned commit. Treat as a research deliverable.
 
@@ -151,7 +151,7 @@ they do not bootstrap it.
 <deferred>
 ## Deferred Ideas
 
-- **Node 22 + 24 CI matrix.** D-13 picks Node 24 only initially. Re-evaluate when VeloWorld's Node version is confirmed; if VeloWorld is on 22, widen the matrix in Phase 5 (where VeloWorld parity is the gate).
+- **Node 22 + 24 CI matrix.** Closed: VeloWorld is confirmed on Node 24, so the matrix isn't needed. Re-open only if a future non-VeloWorld consumer requires Node 22 parity.
 - **Buffer pool / pre-allocation in encoder.** PITFALLS.md performance #2 — v2 concern; only matters at 4+ Hz emission or under multi-hour soak. v1 emission is 1 Hz; not a v1 problem.
 - **Second decoder (PyFTMS) in CI alongside Auuki.** Considered as a strongest-gate option; declined because there's no current evidence Auuki's decode disagrees with the spec on the fields v1 encodes. Revisit if the FTMS-05 round-trip ever produces a false positive.
 - **Lint-ban on raw `DataView.setUint16`.** Possibly added in Phase 4 ESLint setup; for Phase 1, avoided by using `Buffer.write*LE` exclusively in the encoder body (D-10). If the codec module ever uses raw `DataView` writes, add the ban then.

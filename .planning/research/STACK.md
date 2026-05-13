@@ -9,7 +9,7 @@
 | Concern | Pick | Confidence |
 |---|---|---|
 | Language | TypeScript 5.9.x, strict mode | HIGH |
-| Runtime | Node.js 22 LTS (Jod), engines `>=22.12` | HIGH |
+| Runtime | Node.js 24 LTS (Krypton), engines `>=24.0` | HIGH |
 | Module format | ESM-first, dual-publish ESM + CJS | HIGH |
 | Bundler / library builder | `tsup` 8.5.x | HIGH |
 | Test runner | `vitest` 4.1.x (stay on 4 — 5 is beta) | HIGH |
@@ -31,8 +31,8 @@
 
 | Technology | Version | Purpose | Why Recommended |
 |---|---|---|---|
-| Node.js | 22.x LTS ("Jod"), `engines: ">=22.12"` | Runtime | Active LTS through Oct 2026; ships native `--test`, native `fetch`, stable `node:test`, ESM stable, `--experimental-strip-types` for `.ts`. Node 24 ("Krypton") entered LTS in late 2025 and is fine too — pick 22 to stay aligned with VeloWorld unless they're already on 24. Avoid 20 (LTS ends April 2026, already past for this project). |
-| TypeScript | 5.9.x | Type system, types-first library API | VeloWorld's stack; `@stoprocent/bleno` ships `.d.ts`; `fit-file-parser` 3.0 ships generated `.d.ts`; modern `moduleResolution: "bundler"` or `"node16"` makes dual-publish trivial. |
+| Node.js | 24.x LTS ("Krypton"), `engines: ">=24.0"` | Runtime | Active LTS (entered late 2025), supports VeloWorld parity (VeloWorld is on Node 24). Ships native `--test`, native `fetch`, stable `node:test`, ESM stable, broader `--experimental-strip-types` coverage for `.ts`. Avoid 20 (LTS ends April 2026, already past for this project); 22 ("Jod") is fine but VeloWorld parity drives the pick. |
+| TypeScript | 5.9.x | Type system, types-first library API | VeloWorld's stack; `@stoprocent/bleno` ships `.d.ts`; `fit-file-parser` 3.0 ships generated `.d.ts`; modern `moduleResolution: "bundler"` or `"node20"` makes dual-publish trivial. |
 | Module format | ESM-first, dual ESM/CJS publish via `exports` field | Importable from any consumer | `@garmin/fitsdk`, `fit-file-parser` v3, and most modern libs are ESM-first. VeloWorld is "Electron-ish" — Electron 28+ supports ESM, but renderer/main both load CJS too, so dual-publish removes the friction. |
 | `tsup` | 8.5.1 | Library builder | esbuild-powered, zero-config dual ESM+CJS output, generates `.d.ts` and `.d.cts`, splits entry points trivially (`src/index.ts` + `src/bleno.ts` as separate exports for v2). Standard choice for TS libraries in 2025–2026. |
 | `vitest` | 4.1.6 (stay on 4.x — 5.0 is beta) | Test runner | Native ESM and TS, drop-in Jest API, watch mode, fast. `@garmin/fitsdk` and `fit-file-parser` both use vitest themselves — your testing pattern matches the libraries you depend on. |
@@ -56,7 +56,7 @@
 | ESLint 9 (flat) + `@antfu/eslint-config` (or Biome 2.x) | Lint + format | Either works. `fit-file-parser` itself uses `@antfu/eslint-config`; pick Biome only if you want a single tool with no plugin ecosystem. |
 | `publint` | Validate `package.json` `exports` map | Catches the "subpath export forgot CJS" class of bug that breaks consumers; non-negotiable for a dual-published lib. |
 | `@arethetypeswrong/cli` (`attw`) | Validate types resolve correctly in both ESM and CJS | Ditto; run in CI before publish. |
-| GitHub Actions (or equivalent) | CI matrix on macOS + Linux, Node 22 + Node 24 | Don't run BLE tests in CI — peripherals can't be exercised without a real adapter. v2 can add a manual macOS runner with a USB BTLE dongle if needed. |
+| GitHub Actions (or equivalent) | CI on macOS + Linux, Node 24 (matches VeloWorld) | Don't run BLE tests in CI — peripherals can't be exercised without a real adapter. v2 can add a manual macOS runner with a USB BTLE dongle if needed. |
 | `changesets` | Release management | Optional but standard for 2026 TS libraries; lets v2 land BLE without breaking v1 consumers. |
 
 ## Installation
@@ -70,7 +70,7 @@ npm install @stoprocent/bleno          # mark as optionalDependencies in package
 
 # Dev deps (full)
 npm install -D typescript@5 tsup@8 vitest@4 tsx@4 \
-  @types/node@22 \
+  @types/node@24 \
   publint @arethetypeswrong/cli \
   eslint@9 @antfu/eslint-config
 ```
@@ -90,7 +90,7 @@ npm install -D typescript@5 tsup@8 vitest@4 tsx@4 \
       "require": "./dist/index.cjs"
     }
   },
-  "engines": { "node": ">=22.12" },
+  "engines": { "node": ">=24.0" },
   "files": ["dist"]
 }
 ```
@@ -194,8 +194,11 @@ The "Constraints" section says BLE will use `@abandonware/bleno`. That should be
 
 ## Stack Patterns by Variant
 
-**If VeloWorld is on Node 24:**
-- Bump engines to `>=24` and use the broader `node:test` features. No other changes.
+**Default — VeloWorld on Node 24 (current):**
+- Engines pinned to `>=24.0`. Use the broader `node:test` features. CI is single-version (Node 24); widen to a 22+24 matrix only if a future consumer demands Node 22 parity.
+
+**If a future consumer needs Node 22 parity:**
+- Lower engines to `>=22.12` and add a Node 22 leg to the GitHub Actions matrix. Would require avoiding any Node-24-only API in the codebase (`util.parseArgs` extensions, newer `node:test` mocks). Not a v1 concern.
 
 **If VeloWorld is pure ESM:**
 - Drop the CJS half of the dual publish. Saves a tiny amount of build time. Don't do this just for v1 — there's no cost to dual-publishing and it future-proofs against any consumer that wants CJS.
@@ -212,7 +215,7 @@ The "Constraints" section says BLE will use `@abandonware/bleno`. That should be
 
 | Package A | Compatible With | Notes |
 |---|---|---|
-| `@stoprocent/bleno@0.12` | Node `>=14`, declares darwin/linux/android/freebsd/win32 | Use Node 22 LTS for parity with rest of stack. macOS 10.9+, Linux kernel 3.6+. Requires `libbluetooth-dev` on Linux and `bluetoothd` stopped/disabled. |
+| `@stoprocent/bleno@0.12` | Node `>=14`, declares darwin/linux/android/freebsd/win32 | Use Node 24 LTS for VeloWorld parity. macOS 10.9+, Linux kernel 3.6+. Requires `libbluetooth-dev` on Linux and `bluetoothd` stopped/disabled. |
 | `fit-file-parser@3` | Node `>=20` | Engines line says `node >= 20.0.x`. v3 is the first release with proper dual ESM+CJS exports — don't pin to `^2.x` (CJS-only). |
 | `tsup@8.5` | Node `>=18` | Fine on 22/24. Uses esbuild internally. |
 | `vitest@4.1` | Node `>=18` | Avoid 5.0 betas. v4 is stable. |
@@ -228,7 +231,7 @@ The "Constraints" section says BLE will use `@abandonware/bleno`. That should be
 | Original `bleno` (Sandeep Mistry) | Last release 2018; predates Node 16+; broken on modern macOS | `@stoprocent/bleno` |
 | `@garmin/fitsdk-javascript` | **Doesn't exist on npm** under that name (PROJECT.md has the package name slightly wrong) | `@garmin/fitsdk` if you choose Garmin's SDK; otherwise `fit-file-parser` |
 | `js-fit-sdk` | v0.0.1 since 2021, abandoned | `fit-file-parser` |
-| `ts-node` | Slower startup, dual-CJS-ESM headaches | `tsx` for dev runs; native `node --experimental-strip-types` once Node 24 is your minimum |
+| `ts-node` | Slower startup, dual-CJS-ESM headaches | `tsx` for dev runs; native `node --experimental-strip-types` is available on the Node 24 floor (still gated behind a flag, so `tsx` remains the safer default) |
 | `jest` | Slower; ESM/TS story still painful in 2026; not what the FIT libraries you depend on use | `vitest` |
 | `webpack`/`rollup` for a lib build | Heavy, configuration-heavy, slow | `tsup` (esbuild under the hood) |
 | `node-ble` (chrvadala) | **Central-only** (it consumes peripherals via BlueZ DBus); cannot advertise as a peripheral | `@stoprocent/bleno` for peripheral; `@stoprocent/noble` for central |

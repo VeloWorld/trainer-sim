@@ -9,7 +9,7 @@
 
 trainer-sim is a developer test tool: a TypeScript library that lets cycling apps (VeloWorld first, any FTMS-based app second) drop in a `FakeTransport` that satisfies an `ITrainerTransport` contract and emits realistic FTMS `IndoorBikeData` notifications by replaying real Garmin/Wahoo FIT files in real time. Its closest philosophical peers are not other cycling simulators (zwack, gymnasticon — both end-user BLE-broadcasting binaries) but rather mock libraries like MSW, Nock, and Sinon's fake-timers, whose factory + lifecycle + observability + time-control shape is what 2026 consumers expect from a "fake transport for tests."
 
-The recommended approach is a strictly layered, one-way pipeline (FIT loader → normalized `RideRecord[]` → pure ride iterator → drift-corrected scheduler → vendored FTMS encoder → transport seam) on a Node 22 LTS + TypeScript 5.9 + tsup + vitest stack, ESM-first with dual-publish, and a `createFakeTransport(config)` factory as the single public entry point. The transport seam is the only place v1 and v2 diverge: composition (not inheritance) means `BlenoTransport` is a new file in v2 wrapping the same `ReplayController` — not a refactor. `ITrainerTransport` is owned by trainer-sim and re-exported, so VeloWorld and any future open-source consumer share one canonical type.
+The recommended approach is a strictly layered, one-way pipeline (FIT loader → normalized `RideRecord[]` → pure ride iterator → drift-corrected scheduler → vendored FTMS encoder → transport seam) on a Node 24 LTS + TypeScript 5.9 + tsup + vitest stack, ESM-first with dual-publish, and a `createFakeTransport(config)` factory as the single public entry point. The transport seam is the only place v1 and v2 diverge: composition (not inheritance) means `BlenoTransport` is a new file in v2 wrapping the same `ReplayController` — not a refactor. `ITrainerTransport` is owned by trainer-sim and re-exported, so VeloWorld and any future open-source consumer share one canonical type.
 
 The risk profile is dominated by encoding correctness, not architecture. The FTMS spec has four concrete traps that silently produce valid-looking-but-wrong bytes (sint16 vs uint16 power, the inverted "More Data" flag bit 0, half-rpm cadence resolution, and `DataView`'s big-endian default). FIT files have three traps (1989 epoch offset, autopause/sparse-record gaps, developer-defined fields shadowing standard ones). The `setInterval`-vs-absolute-deadline scheduler trap is the one architectural risk that — left unfixed — silently degrades long-soak fidelity. Mitigation: a "spec-table-review + third-party-decoder round-trip" gate before declaring the encoder done, plus parsing FIT upfront into a normalized `{ts, power, cadence}[]` rather than lazily during replay.
 
@@ -17,10 +17,10 @@ The risk profile is dominated by encoding correctness, not architecture. The FTM
 
 ### Recommended Stack
 
-Node.js 22 LTS + TypeScript 5.9 strict, ESM-first with dual ESM/CJS publish via `tsup`. Test with `vitest` 4 (matches what `fit-file-parser` and `@garmin/fitsdk` themselves use). Package hygiene via `publint` + `@arethetypeswrong/cli` is non-negotiable. There is **no usable npm encoder for FTMS IndoorBikeData** — vendoring the codec is the only path; the spec is small (≤8 bytes for v1's power+cadence-only payload) and stable. See [STACK.md](./STACK.md).
+Node.js 24 LTS + TypeScript 5.9 strict, ESM-first with dual ESM/CJS publish via `tsup`. Test with `vitest` 4 (matches what `fit-file-parser` and `@garmin/fitsdk` themselves use). Package hygiene via `publint` + `@arethetypeswrong/cli` is non-negotiable. There is **no usable npm encoder for FTMS IndoorBikeData** — vendoring the codec is the only path; the spec is small (≤8 bytes for v1's power+cadence-only payload) and stable. See [STACK.md](./STACK.md).
 
 **Core technologies:**
-- **TypeScript 5.9 + Node 22 LTS** — VeloWorld parity; LTS through Oct 2026
+- **TypeScript 5.9 + Node 24 LTS** — VeloWorld parity (VeloWorld is on Node 24); active LTS
 - **`tsup` 8.5** — zero-config dual ESM+CJS builder; v2 can add a `trainer-sim/bleno` subpath export without restructuring
 - **`vitest` 4.1** (stay on 4 — 5 is beta) — drop-in fake timers cooperate with consumer test suites
 - **`fit-file-parser` 3.0** — recommended FIT parser: MIT (vs Garmin's custom non-OSI license), ships TS types, dual ESM+CJS, last released 2026-05-05. **Headline deferred decision** — see Gaps
@@ -111,7 +111,7 @@ The dependency graph is a near-perfect linear chain (encoder → loader → iter
 
 ### Phase 5: VeloWorld End-to-End Validation
 **Rationale:** The only acceptance test that matters per PROJECT.md ("VeloWorld's dev/test build runs end-to-end against FakeTransport with a real FIT file"). Until this passes, v1 isn't done regardless of green unit tests.
-**Delivers:** Real Garmin/Wahoo FIT replayed end-to-end through FakeTransport into VeloWorld's decoder; assertions on power+cadence values across the ride; CI green on macOS + Linux on Node 22.
+**Delivers:** Real Garmin/Wahoo FIT replayed end-to-end through FakeTransport into VeloWorld's decoder; assertions on power+cadence values across the ride; CI green on macOS + Linux on Node 24.
 **Avoids:** Silent encoding mismatch between trainer-sim's encoder and VeloWorld's decoder — recovery from this post-v1 is a coordinated major-version bump.
 
 ### Phase Ordering Rationale

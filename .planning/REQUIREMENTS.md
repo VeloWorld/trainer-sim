@@ -41,13 +41,13 @@ Requirements for v1 (FakeTransport library only). Each maps to roadmap phases.
 - [ ] **API-05**: `received.resistance` is a public read-only array of every `sendResistance(grade)` call in order, for test assertions
 - [ ] **API-06**: `reset()` clears the resistance log and replay cursor so a single FakeTransport instance can be reused across `afterEach()`-isolated tests
 - [ ] **API-07**: Library ships as ESM-first with dual ESM/CJS publish, validated by `publint` and `@arethetypeswrong/cli`
-- [ ] **API-08**: Library is importable into TypeScript Node 22 projects with strict-mode types out of the box
+- [ ] **API-08**: Library is importable into TypeScript Node 24 projects with strict-mode types out of the box
 
 ### VeloWorld Integration
 
 - [ ] **VW-01**: VeloWorld's existing `ITrainerTransport`-consuming code runs unchanged when `FakeTransport` is swapped in for the real BLE transport
 - [ ] **VW-02**: A real Garmin/Wahoo FIT file replayed through FakeTransport produces power and cadence values that VeloWorld's existing FTMS decoder reads correctly across the full ride
-- [ ] **VW-03**: Continuous integration runs the VeloWorld E2E suite green on macOS and Linux (Node 22)
+- [ ] **VW-03**: Continuous integration runs the VeloWorld E2E suite green on macOS and Linux (Node 24)
 
 ## v2 Requirements
 

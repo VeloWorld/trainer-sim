@@ -71,7 +71,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - Standard pattern; no phase research flag.
 
 ### Phase 4: FakeTransport & Public API
-**Goal**: Library exposes a `createFakeTransport(config)` factory that satisfies `ITrainerTransport` and ships as a dual ESM/CJS package importable cleanly into a TypeScript Node 22 project
+**Goal**: Library exposes a `createFakeTransport(config)` factory that satisfies `ITrainerTransport` and ships as a dual ESM/CJS package importable cleanly into a TypeScript Node 24 project
 **Depends on**: Phase 3
 **Requirements**: API-01, API-02, API-03, API-04, API-05, API-06, API-07, API-08
 **Success Criteria** (what must be TRUE):
@@ -79,7 +79,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `onData(handler)` accepts a `(data: DataView) => void` handler and returns a disposer that, when called, stops further deliveries to that handler
   3. Calling `sendResistance(grade)` records the grade in `received.resistance` (in order) and does not modify any subsequent emitted power or cadence value
   4. `reset()` clears `received.resistance` and rewinds the replay cursor so a single instance can be reused across `afterEach()`-isolated tests
-  5. `publint` and `@arethetypeswrong/cli` both pass against the published package shape; importing the library into a fresh strict-mode TypeScript Node 22 project requires no `@types/*` shim
+  5. `publint` and `@arethetypeswrong/cli` both pass against the published package shape; importing the library into a fresh strict-mode TypeScript Node 24 project requires no `@types/*` shim
 **Plans**: TBD
 **Notes**:
   - The `ITrainerTransport` interface owns the async semantics for `sendResistance` (force a microtask boundary even in Fake) and forbids any BLE-specific types in the import graph — these decisions ripple through every test and into v2's BlenoTransport, so settle them here.
@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. VeloWorld's existing `ITrainerTransport`-consuming code runs unchanged when FakeTransport is swapped in for the real BLE transport (no edits to ride scene or physics code)
   2. A real Garmin/Wahoo FIT file replayed through FakeTransport yields power and cadence values that VeloWorld's existing FTMS decoder reads correctly across the full ride
-  3. CI runs the VeloWorld E2E suite green on both macOS and Linux on Node 22
+  3. CI runs the VeloWorld E2E suite green on both macOS and Linux on Node 24
 **Plans**: TBD
 **Notes**:
   - Cross-repo coordination point: the integration target lives in the VeloWorld repo, not this one. Plan-phase will need a coordinated workflow that pulls VeloWorld's existing `ITrainerTransport` consumer into a smoke test (or stands up a temporary integration harness inside trainer-sim that mirrors VeloWorld's decoder usage). Decide the form before planning starts.
