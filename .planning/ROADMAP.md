@@ -41,7 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 5 plans
 - [x] 01-01-PLAN.md — Project skeleton (package.json, tsconfig, tsup, vitest, src/index.ts stub, README, .gitignore) — Wave 1
 - [x] 01-02-PLAN.md — Hand-rolled spec-cited MIT FTMS decoder fixture (test/fixtures/ftms-decoder.ts) — Wave 1
-- [ ] 01-03-PLAN.md — Implement encodeIndoorBikeData (src/ftms/indoor-bike-data.ts) + re-export from src/index.ts — Wave 2
+- [x] 01-03-PLAN.md — Implement encodeIndoorBikeData (src/ftms/indoor-bike-data.ts) + re-export from src/index.ts — Wave 2
 - [ ] 01-04-PLAN.md — Byte-correctness + round-trip + FIELDS-invariants test suite + publint/attw validate — Wave 3
 - [ ] 01-05-PLAN.md — GitHub Actions CI (macOS + Ubuntu, Node 24) + nRF Connect manual verification — Wave 3
 **Notes**:
