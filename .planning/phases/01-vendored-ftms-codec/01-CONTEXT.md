@@ -22,7 +22,8 @@ they do not bootstrap it.
 - Internal record type (encoder input shape) in `src/types.ts`
 - Full project skeleton: `package.json`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`, `src/index.ts`, dual ESM/CJS exports map
 - `publint` + `@arethetypeswrong/cli` validation in CI
-- Round-trip tests through Auuki JS decoder (in-process vitest)
+- Round-trip tests through the spec-cited hand-rolled MIT decoder at `test/fixtures/ftms-decoder.ts` (in-process vitest)
+- One-shot manual nRF Connect verification with screenshot attached to phase verification (D-03)
 - Sign-edge and half-rpm parametrized cases per ROADMAP success criteria
 
 **Out of scope (deferred to later phases):**
@@ -38,13 +39,11 @@ they do not bootstrap it.
 ## Implementation Decisions
 
 ### Third-Party Decoder Harness (FTMS-05 gate)
-- **D-01:** The round-trip gate runs against the **Auuki JS decoder**, in-process inside vitest. Round-trip is one assertion in a unit test; runs unmodified in CI on macOS/Linux.
-- **D-02:** Auuki is used as a **decoder only**. Auuki itself encodes power as `Uint16` (PITFALLS.md #2) — that bug does not affect us because we read its decode path, not its encode path.
-- **D-03:** Open question for research/planning: how to consume Auuki's `indoor-bike-data.js`. Options the planner must choose between:
-  - **Vendor a copy** under `test/fixtures/auuki-decoder.js` with attribution and the upstream commit hash committed alongside (license is MIT — compatible).
-  - **Git submodule** of `dvmarinoff/Auuki` pinned to a commit (heavier; pulls Auuki's whole repo).
-  - **`npm install github:dvmarinoff/Auuki#<sha>`** (relies on Auuki's `package.json` being importable; not currently structured as a publishable lib).
-  Recommended path is vendor-a-copy with a `README.md` next to it explaining provenance and pinned commit. Defer the final call to research.
+- **D-01:** The round-trip gate runs against a **hand-rolled MIT decoder** at `test/fixtures/ftms-decoder.ts`, in-process inside vitest. Each field is implemented by reading Bluetooth SIG FTMS v1.0.1 §4.9 directly and is annotated with the spec line/clause it implements (not by inverting the encoder source). Round-trip is one assertion in a unit test; runs unmodified in CI on macOS/Linux.
+- **D-02:** The hand-rolled decoder must be authored independently of `src/ftms/indoor-bike-data.ts` — derive each field from the spec PDF, not from the encoder's `FIELDS` table. A shared mis-read of the spec is the failure mode this gate is supposed to surface; if the decoder just inverts the encoder, the gate degrades to a self-consistency check.
+- **D-03:** A **one-shot manual nRF Connect verification** is part of Phase 1 done. A dev script encodes a known `{power, cadence}` payload; nRF Connect on a phone reads back the same values; a screenshot is attached to the phase verification artifact. This is the only genuinely third-party check in the loop and is not optional.
+- **D-03b:** Hand-computed byte fixtures (per RESEARCH.md "Reference Payloads") remain the primary oracle for spec-correctness. The round-trip catches encoder/decoder asymmetry and regressions from future field additions; the fixtures catch spec mis-reads. Both gates apply.
+- **D-03c:** Auuki's `src/ble/ftms/indoor-bike-data.js` is **AGPL-3.0** (the prior D-02/D-03 entries calling it MIT-compatible were wrong). It must not be vendored, submoduled, or imported into this repo's test tree.
 
 ### Speed-Field Encoding Strategy
 - **D-04:** Encoder accepts `{power: number, cadence: number, speed?: number}`. v1 callers always pass `speed: undefined`, so bit-0 = 1 ("more data — speed NOT present"), but the inversion logic is real and tested.
@@ -106,8 +105,8 @@ they do not bootstrap it.
 - `.planning/research/PITFALLS.md` §"Looks Done But Isn't" — first 4 checklist items gate Phase 1 done
 
 ### Reference implementations
-- `https://github.com/dvmarinoff/Auuki/blob/master/src/ble/ftms/indoor-bike-data.js` — chosen decoder for the FTMS-05 round-trip gate (D-01); MIT-licensed
-- `https://github.com/dudanov/python-pyftms` — secondary spec-compliance reference; Apache-2.0; not used in CI but useful when Auuki and the spec disagree
+- `https://github.com/dudanov/python-pyftms` — Apache-2.0 spec-compliance reference; consulted while authoring the hand-rolled decoder when the spec wording is ambiguous, not imported
+- **Rejected:** `https://github.com/dvmarinoff/Auuki/blob/master/src/ble/ftms/indoor-bike-data.js` — license is **AGPL-3.0**, not MIT (prior CONTEXT entries were wrong). Do not vendor, submodule, or import. May be read offline as a sanity check while writing the spec-cited decoder, but no Auuki code lands in this repo.
 
 ### Architecture and stack
 - `.planning/research/ARCHITECTURE.md` §Component 5 (`FtmsEncoder`) — confirms pure-stateless `(record) → DataView` (D-08)
@@ -144,7 +143,7 @@ they do not bootstrap it.
 
 - **"Why Node 22, why not 24?"** — User flagged this during gray-area selection and confirmed VeloWorld is on Node 24. Resolved by D-16: Node 24 IS the parity pick. STACK.md, SUMMARY.md, ROADMAP.md, REQUIREMENTS.md, and CLAUDE.md have been updated to Node 24 throughout. PROJECT.md should still get a refresh at the next phase transition to reflect `@stoprocent/bleno` (already noted in research/SUMMARY.md as a pending PROJECT.md update).
 - The encoder MUST be authored such that adding a speed-emit code path in v2 is a one-method change (the type already accepts `speed?`; bit-0 logic already branches). Don't paint future-self into a corner.
-- Auuki is an app, not a published library — the planner needs a concrete answer on how to import its decoder (D-03). Recommended: vendored copy with pinned commit. Treat as a research deliverable.
+- The hand-rolled decoder at `test/fixtures/ftms-decoder.ts` must be spec-cited, not encoder-inverted. If both encoder and decoder cite spec lines independently, a shared mis-read has to happen in two places to slip through. See D-01/D-02.
 
 </specifics>
 
@@ -153,7 +152,7 @@ they do not bootstrap it.
 
 - **Node 22 + 24 CI matrix.** Closed: VeloWorld is confirmed on Node 24, so the matrix isn't needed. Re-open only if a future non-VeloWorld consumer requires Node 22 parity.
 - **Buffer pool / pre-allocation in encoder.** PITFALLS.md performance #2 — v2 concern; only matters at 4+ Hz emission or under multi-hour soak. v1 emission is 1 Hz; not a v1 problem.
-- **Second decoder (PyFTMS) in CI alongside Auuki.** Considered as a strongest-gate option; declined because there's no current evidence Auuki's decode disagrees with the spec on the fields v1 encodes. Revisit if the FTMS-05 round-trip ever produces a false positive.
+- **Second decoder (PyFTMS) in CI alongside the hand-rolled decoder.** Considered as a strongest-gate option; declined because byte-fixtures + spec-cited decoder + one-shot nRF Connect already cover the failure modes without dragging Python into CI. Revisit if the FTMS-05 round-trip ever produces a false positive.
 - **Lint-ban on raw `DataView.setUint16`.** Possibly added in Phase 4 ESLint setup; for Phase 1, avoided by using `Buffer.write*LE` exclusively in the encoder body (D-10). If the codec module ever uses raw `DataView` writes, add the ban then.
 - **Update PROJECT.md** with `@stoprocent/bleno` (modern fork) and Node 24 floor. Not a Phase 1 task — handle at the next `/gsd-transition` per `gsd` workflow conventions.
 

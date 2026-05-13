@@ -19,7 +19,7 @@ so a regression at any layer surfaces locally rather than at the integration gat
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Vendored FTMS Codec** - Byte-correct IndoorBikeData encoder with third-party-decoder round-trip
+- [ ] **Phase 1: Vendored FTMS Codec** - Byte-correct IndoorBikeData encoder gated on spec-cited MIT decoder round-trip + hand-computed byte fixtures + one-shot nRF Connect manual verification
 - [ ] **Phase 2: FIT Loader & Normalization** - Real Garmin/Wahoo FIT files become a clean RideRecord stream
 - [ ] **Phase 3: Replay Engine** - Drift-corrected real-time scheduler with clean cancellation and loop/stop semantics
 - [ ] **Phase 4: FakeTransport & Public API** - `createFakeTransport` factory ships dual ESM/CJS with the `ITrainerTransport` contract
@@ -30,17 +30,18 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 1: Vendored FTMS Codec
 **Goal**: Library produces byte-correct FTMS IndoorBikeData payloads that any spec-compliant decoder can consume
 **Depends on**: Nothing (first phase)
-**Requirements**: FTMS-01, FTMS-02, FTMS-03, FTMS-04, FTMS-05
+**Requirements**: FTMS-01, FTMS-02, FTMS-03, FTMS-04, FTMS-05a, FTMS-05b, FTMS-05c
 **Success Criteria** (what must be TRUE):
-  1. Calling the encoder with a `{power, cadence}` record produces a little-endian `DataView` that matches a hand-computed reference payload byte-for-byte
-  2. Encoded payloads round-trip cleanly through at least one third-party FTMS decoder (Auuki JS, PyFTMS, or nRF Connect) — power and cadence read back equal to the inputs
+  1. Calling the encoder with a `{power, cadence}` record produces a little-endian `DataView` that matches a hand-computed reference payload byte-for-byte (FTMS-05b)
+  2. Encoded payloads round-trip cleanly through a spec-cited hand-rolled MIT decoder at `test/fixtures/ftms-decoder.ts` — each field annotated with the Bluetooth SIG FTMS v1.0.1 §4.9 line it implements, authored from the spec rather than by inverting the encoder (FTMS-05a)
   3. Power values across the sint16 sign edge (`-1`, `-32768`, `+32767`) round-trip with correct sign and value
-  4. Cadence at half-rpm resolution (e.g., 90.5 rpm) round-trips through a decoder as 90.5, not 45 or 181
+  4. Cadence at half-rpm resolution (e.g., 90.5 rpm) round-trips through the decoder as 90.5, not 45 or 181
   5. The "More Data" flag bit-0 inversion is set correctly: encoded payloads decode with the expected speed-present semantics
+  6. One-shot manual nRF Connect verification — a dev script encodes a known `{power, cadence}` payload, nRF Connect on a phone reads back the same values, screenshot attached to phase verification (FTMS-05c)
 **Plans**: TBD
 **Notes**:
-  - Risk: encoding traps (sint16, half-rpm, inverted bit-0, big-endian default) are all silent — naive unit tests pass but real decoders disagree. Gate Phase 1 done on the third-party round-trip, not just internal byte assertions.
-  - Phase research flag: pick the third-party decoder harness (Auuki JS vs PyFTMS vs nRF Connect mobile) before planning starts.
+  - Risk: encoding traps (sint16, half-rpm, inverted bit-0, big-endian default) are all silent — naive unit tests pass but real decoders disagree. Phase 1 done is gated on three independent checks, not one: hand-computed byte fixtures (catches spec mis-reads), spec-cited MIT decoder round-trip (catches encoder/decoder asymmetry and future regressions), and one-shot nRF Connect (the only genuinely third-party check).
+  - Decoder harness resolved 2026-05-13: hand-rolled MIT decoder in `test/fixtures/ftms-decoder.ts`, authored from the SIG spec PDF. Auuki was rejected — it is AGPL-3.0 (prior CONTEXT entries calling it MIT-compatible were wrong); vendoring or submoduling it would contaminate this MIT repo. PyFTMS and an Auuki submodule were considered and declined as heavier alternatives that don't materially improve coverage over the chosen three-gate approach.
 
 ### Phase 2: FIT Loader & Normalization
 **Goal**: Library turns a real Garmin/Wahoo FIT file (path or Buffer) into a normalized, time-ordered `RideRecord[]` that the replay engine can consume without surprises
@@ -112,6 +113,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 ## Risks & Coordination Points
 
-- **Phase 1 — third-party decoder harness selection.** The encoder's correctness gate is a round-trip through an external decoder. Phase research must pick between Auuki's JS decoder, PyFTMS, and nRF Connect mobile before planning starts.
+- **Phase 1 — decoder harness (resolved 2026-05-13).** Hand-rolled spec-cited MIT decoder in `test/fixtures/ftms-decoder.ts` + hand-computed byte fixtures + one-shot nRF Connect manual verification. Auuki was rejected as AGPL-3.0 (prior CONTEXT.md/SUMMARY.md entries calling it MIT-compatible were wrong). See Phase 1 success criteria.
 - **Phase 2 — FIT-parser license review.** The deferred PROJECT.md decision between `fit-file-parser` (MIT) and `@garmin/fitsdk` (custom Garmin license) must be resolved by phase research before code lands. The `FitLoader` boundary makes the swap a one-file change either way.
 - **Phase 5 — cross-repo coordination with VeloWorld.** The integration target lives in a separate repository. The form of the integration test (in-tree harness mirroring VeloWorld's decoder usage vs a coordinated PR against VeloWorld) must be decided in plan-phase.

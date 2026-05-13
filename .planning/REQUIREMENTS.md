@@ -13,7 +13,9 @@ Requirements for v1 (FakeTransport library only). Each maps to roadmap phases.
 - [ ] **FTMS-02**: Encoder includes Instantaneous Power (sint16, watts) when power is present in the source record
 - [ ] **FTMS-03**: Encoder includes Instantaneous Cadence (uint16, 0.5 rpm resolution; wire = rpm × 2) when cadence is present in the source record
 - [ ] **FTMS-04**: Encoder sets the inverted bit-0 "More Data" flag correctly (0 = speed present, 1 = NOT present) and all other flag bits per spec
-- [ ] **FTMS-05**: Encoded payloads round-trip cleanly through at least one third-party FTMS decoder (e.g. Auuki JS or PyFTMS)
+- [ ] **FTMS-05a**: Encoded payloads round-trip cleanly through a spec-cited hand-rolled MIT decoder at `test/fixtures/ftms-decoder.ts` (each field annotated with the Bluetooth SIG FTMS v1.0.1 §4.9 line it implements; authored from the spec, not by inverting the encoder) — power, cadence, and speed-present semantics read back equal to the inputs
+- [ ] **FTMS-05b**: Encoded payloads match hand-computed reference byte fixtures (per Phase 1 RESEARCH.md) — catches spec mis-reads that an encoder-symmetric round-trip would miss
+- [ ] **FTMS-05c**: One-shot manual nRF Connect verification — a dev script encodes a known `{power, cadence}` payload, nRF Connect on a phone reads back the same values, screenshot attached to phase verification (the only genuinely third-party check; required for Phase 1 done)
 
 ### FIT Loader
 
@@ -107,7 +109,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FTMS-02 | Phase 1 | Pending |
 | FTMS-03 | Phase 1 | Pending |
 | FTMS-04 | Phase 1 | Pending |
-| FTMS-05 | Phase 1 | Pending |
+| FTMS-05a | Phase 1 | Pending |
+| FTMS-05b | Phase 1 | Pending |
+| FTMS-05c | Phase 1 | Pending |
 | FIT-01 | Phase 2 | Pending |
 | FIT-02 | Phase 2 | Pending |
 | FIT-03 | Phase 2 | Pending |
@@ -132,8 +136,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VW-03 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 27 (finalized by roadmapper 2026-05-13)
+- v1 requirements: 29 total (FTMS-05 split into 05a/05b/05c on 2026-05-13)
+- Mapped to phases: 29
 - Unmapped: 0 ✓
 
 ---
