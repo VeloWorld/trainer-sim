@@ -39,8 +39,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. The "More Data" flag bit-0 inversion is set correctly: encoded payloads decode with the expected speed-present semantics
   6. One-shot manual nRF Connect verification — a dev script encodes a known `{power, cadence}` payload, nRF Connect on a phone reads back the same values, screenshot attached to phase verification (FTMS-05c)
 **Plans**: 5 plans
-- [ ] 01-01-PLAN.md — Project skeleton (package.json, tsconfig, tsup, vitest, src/index.ts stub, README, .gitignore) — Wave 1
-- [ ] 01-02-PLAN.md — Hand-rolled spec-cited MIT FTMS decoder fixture (test/fixtures/ftms-decoder.ts) — Wave 1
+- [x] 01-01-PLAN.md — Project skeleton (package.json, tsconfig, tsup, vitest, src/index.ts stub, README, .gitignore) — Wave 1
+- [x] 01-02-PLAN.md — Hand-rolled spec-cited MIT FTMS decoder fixture (test/fixtures/ftms-decoder.ts) — Wave 1
 - [ ] 01-03-PLAN.md — Implement encodeIndoorBikeData (src/ftms/indoor-bike-data.ts) + re-export from src/index.ts — Wave 2
 - [ ] 01-04-PLAN.md — Byte-correctness + round-trip + FIELDS-invariants test suite + publint/attw validate — Wave 3
 - [ ] 01-05-PLAN.md — GitHub Actions CI (macOS + Ubuntu, Node 24) + nRF Connect manual verification — Wave 3
