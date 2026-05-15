@@ -53,5 +53,8 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/agni21/trainer-sim.git"
+  },
+  "dependencies": {
+    "fit-file-parser": "~3.0.0"
   }
 }
