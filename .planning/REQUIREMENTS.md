@@ -23,7 +23,7 @@ Requirements for v1 (FakeTransport library only). Each maps to roadmap phases.
 - [ ] **FIT-02**: Loader extracts `record` messages and exposes them as a normalized, time-ordered `RideRecord[]` (timestamp, optional power, optional cadence)
 - [ ] **FIT-03**: Loader converts FIT timestamps (seconds since 1989-12-31 UTC) to Unix epoch correctly
 - [ ] **FIT-04**: Loader handles real-world Garmin/Wahoo files with autopause gaps, sparse smart-recording records, and null power values without throwing
-- [ ] **FIT-05**: Loader reads standard fields by `(message-num, field-num)` so developer-defined fields (e.g. TrainerRoad's "power") never shadow the standard ones
+- [ ] **FIT-05**: When a FIT file's developer-defined fields collide with a standard `record` field name (e.g. TrainerRoad's `"power"`), the loader returns a usable `record.power` value and emits a `util.debuglog('trainer-sim:fit')` warning naming the affected fields. The loader does **not** throw on shadow conflicts. The wire-level `(message-num, field-num)` distinction is **not** preserved in `RideRecord` — the JS object is shadowed-field-wins, matching the underlying `fit-file-parser` 3.0 behavior.
 
 ### Replay Engine
 
