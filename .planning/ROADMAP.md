@@ -61,8 +61,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-01-PLAN.md — Foundation: install fit-file-parser@~3.0.0, add RideRecord type, FitLoadError hierarchy (D-FIT-01, D-FIT-06, D-FIT-08, D-FIT-10) — Wave 1
 - [x] 02-02-PLAN.md — Fixtures: scrubber + shadow generator + 7 committed FIT fixtures + provenance README (D-FIT-04, D-FIT-05) — Wave 2
 - [x] 02-03-PLAN.md — Source: src/fit/normalize.ts + src/fit/loader.ts (header/CRC validation, FitRecordSource seam, shadow debuglog) + src/index.ts re-exports (D-FIT-01..03/06..10) — Wave 3
-- [ ] 02-04-PLAN.md — Tests A: loader path/buffer parity, error paths, dev-field shadow non-fatal, perf gate <50 ms (FIT-01, FIT-04, FIT-05, D-FIT-06, D-FIT-10) — Wave 4
-- [ ] 02-05-PLAN.md — Tests B: normalize unit tests + TEST_FIT_DIR opt-in local-dev suite (FIT-02, FIT-03, FIT-04, D-FIT-01..04, D-FIT-09) — Wave 4
+- [x] 02-04-PLAN.md — Tests A: loader path/buffer parity, error paths, dev-field shadow non-fatal, perf gate <50 ms (FIT-01, FIT-04, FIT-05, D-FIT-06, D-FIT-10) — Wave 4
+- [x] 02-05-PLAN.md — Tests B: normalize unit tests + TEST_FIT_DIR opt-in local-dev suite (FIT-02, FIT-03, FIT-04, D-FIT-01..04, D-FIT-09) — Wave 4
 **Notes**:
   - Phase research flag: final FIT-parser license review — confirm `fit-file-parser` 3.0 (MIT) is the right pick versus `@garmin/fitsdk` (custom Garmin license). The `FitLoader` boundary makes the swap a one-file change either way, but the call must be made before any code lands.
   - Parse upfront, not lazily — keeps the Phase 3 scheduler honest. Performance gate: <100 ms parse for a typical 1-hour file.
