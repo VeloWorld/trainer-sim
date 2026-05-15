@@ -56,8 +56,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Loading a FIT file by filesystem path and by in-memory Buffer both yield the same normalized `RideRecord[]`
   2. Timestamps in the returned records are Unix epoch milliseconds, not FIT epoch (the 1989-12-31 UTC offset is applied)
   3. A real Garmin export containing autopause gaps, sparse smart-recording records, and null power values loads without throwing and produces a usable record stream
-  4. A TrainerRoad-exported FIT file with developer-defined `power` fields returns the standard `record.power`, never the developer field
-**Plans**: TBD
+  4. A TrainerRoad-exported FIT file with developer-defined `power` fields loads without throwing and emits a `util.debuglog('trainer-sim:fit')` warning naming the affected fields (per FIT-05 amendment 2026-05-16 / D-FIT-10; supersedes the prior "returns standard `record.power`, never the developer field" wording)
+**Plans**: 5 plans
+- [ ] 02-01-PLAN.md — Foundation: install fit-file-parser@~3.0.0, add RideRecord type, FitLoadError hierarchy (D-FIT-01, D-FIT-06, D-FIT-08, D-FIT-10) — Wave 1
+- [ ] 02-02-PLAN.md — Fixtures: scrubber + shadow generator + 7 committed FIT fixtures + provenance README (D-FIT-04, D-FIT-05) — Wave 2
+- [ ] 02-03-PLAN.md — Source: src/fit/normalize.ts + src/fit/loader.ts (header/CRC validation, FitRecordSource seam, shadow debuglog) + src/index.ts re-exports (D-FIT-01..03/06..10) — Wave 3
+- [ ] 02-04-PLAN.md — Tests A: loader path/buffer parity, error paths, dev-field shadow non-fatal, perf gate <50 ms (FIT-01, FIT-04, FIT-05, D-FIT-06, D-FIT-10) — Wave 4
+- [ ] 02-05-PLAN.md — Tests B: normalize unit tests + TEST_FIT_DIR opt-in local-dev suite (FIT-02, FIT-03, FIT-04, D-FIT-01..04, D-FIT-09) — Wave 4
 **Notes**:
   - Phase research flag: final FIT-parser license review — confirm `fit-file-parser` 3.0 (MIT) is the right pick versus `@garmin/fitsdk` (custom Garmin license). The `FitLoader` boundary makes the swap a one-file change either way, but the call must be made before any code lands.
   - Parse upfront, not lazily — keeps the Phase 3 scheduler honest. Performance gate: <100 ms parse for a typical 1-hour file.
@@ -111,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Vendored FTMS Codec | 0/TBD | Not started | - |
-| 2. FIT Loader & Normalization | 0/TBD | Not started | - |
+| 2. FIT Loader & Normalization | 0/5 | Not started | - |
 | 3. Replay Engine | 0/TBD | Not started | - |
 | 4. FakeTransport & Public API | 0/TBD | Not started | - |
 | 5. VeloWorld End-to-End Validation | 0/TBD | Not started | - |
