@@ -1,0 +1,161 @@
+# Phase 2: FIT Loader & Normalization - Context
+
+**Gathered:** 2026-05-16
+**Status:** Ready for planning
+
+<domain>
+## Phase Boundary
+
+Library turns a real Garmin/Wahoo FIT file (filesystem path or in-memory
+Buffer) into a normalized, time-ordered `RideRecord[]` that the Phase 3 replay
+engine can consume without surprises. Lives at `src/fit/`, parses upfront (no
+streams), returns plain JS objects.
+
+**In scope:**
+- `src/fit/loader.ts` — `loadFitFromPath(path)` (async) + `loadFitFromBuffer(input)` (sync) entry points
+- `src/fit/normalize.ts` — FIT `record` messages → `RideRecord[]` (timestamp, optional power, optional cadence)
+- `src/types.ts` — extend with `RideRecord` (already planned per ARCHITECTURE.md)
+- Typed error hierarchy: `FitLoadError` base + `InvalidFitHeaderError`, `FitCrcError`, `FitTruncatedError`, `NoRecordMessagesError`
+- Test fixtures: pre-recorded synthetic `.fit` binaries under `test/fixtures/` (CI tier) + `TEST_FIT_DIR` opt-in real-world files (local-dev tier)
+- `FitRecordSource` interface seam so the parser is a one-file swap (per STACK.md)
+
+**Out of scope (deferred to later phases):**
+- Replay scheduling, AbortController, timing (Phase 3)
+- `ITrainerTransport` interface, `createFakeTransport`, EventEmitter glue (Phase 4)
+- `RideRecord.speed`, heart rate, position fields (v2 / not needed for VeloWorld v1)
+- ReadableStream as a FIT input source (REQUIREMENTS.md out-of-scope; defer to v1.x if real demand)
+- BLE / `@stoprocent/bleno` (v2)
+- TrainerRoad-specific power-source handling beyond FIT-05 (read by `(message-num, field-num)` is the whole defense)
+
+</domain>
+
+<decisions>
+## Implementation Decisions
+
+### RideRecord Shape & Gap Semantics
+- **D-FIT-01:** `RideRecord = { timestamp: number; power?: number; cadence?: number }` — optional fields. Loader normalizes wire `null` and missing-field cases to JS `undefined` (omitted property); a real `0` from the wire stays `0`. This preserves the wire-level distinction between "rider coasting (0 W)" and "sensor disconnected (no reading)" — important for VeloWorld's "no power signal" UI semantics. Phase 1 encoder already gates the flag bit on `value === undefined`; this lines up cleanly.
+- **D-FIT-02:** Autopause gaps are preserved as plain timestamp jumps in `RideRecord[]` — the loader emits records exactly as the FIT file recorded them. No backfill, no tagged-union `{kind: 'gap'}`. Phase 3 scheduler owns the gap policy (fast-forward, real-time-pause, skip). Honest replay; matches the "Bring Your Own FIT" philosophy in PROJECT.md.
+- **D-FIT-03:** Loader returns records sorted ascending by timestamp; drops exact-duplicate timestamps (keep-first). Real Garmin/Wahoo files occasionally emit out-of-order or duplicate `record` messages (clock-skew correction, multi-pass smart recording, file concatenation tooling); FIT-02 says "time-ordered" so the loader enforces that here, sparing Phase 3 defensive monotonic-timestamp checks. Drop count is exposed in the load result so debugging isn't blind (see D-FIT-09).
+
+### Test Fixture Strategy
+- **D-FIT-04:** Two-tier fixture strategy:
+  - **CI tier:** committed pre-recorded synthetic `.fit` binaries under `test/fixtures/` covering the FIT-01..05 structural matrix (basic ride, autopause, sparse cadence, null power, TrainerRoad-style developer-defined `power` field). Runs in CI, no external dependencies, fully reproducible.
+  - **Local-dev tier:** an opt-in suite gated on `TEST_FIT_DIR` env var; when set, runs against the developer's actual Garmin/Wahoo exports as a smoke pass. Runs locally before release, skipped in CI.
+- **D-FIT-05:** Synthetic `.fit` binaries are pre-recorded, NOT generated at test time. PROJECT.md's "consumers bring their own — don't bundle fixtures" rule applies to *runtime* assets; test binaries don't ship to consumers. Each `.fit` file has a sibling `.md` documenting what it represents (record count, gap structure, dev fields, anomalies) so the bytes don't become opaque. The one-shot generator script lives in `test/fixtures/generate.ts` (or similar) but does not run in CI — fixtures are committed bytes.
+
+### Error Surface
+- **D-FIT-06:** Typed `Error` subclasses, fail-fast for corrupt input. Hierarchy:
+  - `FitLoadError` (abstract base) — consumers can `catch (e instanceof FitLoadError)` for generic handling
+  - `InvalidFitHeaderError` — bad magic / wrong header bytes
+  - `FitCrcError` — CRC mismatch
+  - `FitTruncatedError` — file ends mid-message
+  - `NoRecordMessagesError` — valid FIT but zero `record` messages (workout-only file, GPX export mislabeled)
+  FIT-04's "load without throwing" applies to *valid* files with weird shapes (gaps, sparse, null power), NOT to corrupt/wrong-type input. Trainer-sim is a developer test tool — silent fallbacks would corrupt downstream replay; loud, actionable failures are the right default.
+
+### Public API Shape
+- **D-FIT-07:** Two entry points:
+  ```ts
+  export async function loadFitFromPath(path: string): Promise<RideRecord[]>;
+  export function loadFitFromBuffer(input: Buffer | Uint8Array): RideRecord[];
+  ```
+  `loadFitFromPath` reads the file via `fs.readFile` then delegates to `loadFitFromBuffer`. Both throw the D-FIT-06 errors. `loadFitFromBuffer` is sync because `fit-file-parser` is sync once bytes are in memory. Both are re-exported from `src/index.ts`.
+
+### Parser Choice (locked from STACK.md)
+- **D-FIT-08:** Parser is `fit-file-parser@3.0.0` (MIT, dual ESM+CJS, ships TS types, Node ≥20). STACK.md's HIGH-confidence recommendation: license posture is the deciding factor (Garmin SDK has a custom license and is ESM-only with no first-party types). The parser is wrapped behind a `FitRecordSource` internal interface so swapping to `@garmin/fitsdk` later is a one-file change (per STACK.md "Mitigation: keep the parser behind an interface").
+
+### Load Result Metadata (debugging surface)
+- **D-FIT-09:** When the loader drops out-of-order or duplicate records (D-FIT-03), it surfaces the count via load metadata. Implementation choice between (a) returning a richer object `{ records, dropped: { duplicates, outOfOrder } }` from `loadFitFromBuffer` and (b) keeping the array return shape and exposing drops via a separate `getLastLoadDiagnostics()` accessor or via a debug-channel. Open question for the planner — the user wants the count visible somewhere, exact API shape is delegate-able. Default if unspecified: return `RideRecord[]` from the public API and log dropped-count to stderr at `debug` level only (not `console.warn` — too noisy for test output).
+
+### Claude's Discretion
+- File-level layout inside `src/fit/`: `loader.ts` + `normalize.ts` per ARCHITECTURE.md is the strong default; collapsing to a single `src/fit/index.ts` is fine if it reads cleaner once written.
+- Helper naming inside the FIT module (`fitEpochToUnixMs`, `extractRecordMessages`, etc.) — taste-level.
+- Whether `FitRecordSource` is a TypeScript interface or a runtime object — interface (compile-time only) is the lighter pick; promote to runtime only if the test seam demands it.
+- How to write the synthetic `.fit` fixtures: hand-rolled FIT writer, third-party dev-dep, or a one-time recording from a real device with PII scrubbed — researcher / planner picks the path with lowest cost. The constraint is just that the resulting bytes are committed and documented (D-FIT-05).
+- Specific `fit-file-parser` options (e.g. `force_index_to_message`, type-conversion knobs) — researcher will pin these against real files to confirm null/0 wire semantics survive.
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Spec authority
+- Garmin FIT Protocol Document, Rev 2.3.x — file header, definition messages, data messages, CRC-16/ARC, message-num/field-num lookup. Authoritative source for FIT-03 (epoch conversion: seconds since 1989-12-31 UTC) and FIT-05 (read by `(message-num, field-num)`, NOT by name, to avoid TrainerRoad's developer-defined `power` shadowing). Confidence: HIGH.
+
+### Parser
+- `https://github.com/jimmykane/fit-parser` — `fit-file-parser` 3.0.0 README + `package.json`. MIT, dual ESM+CJS, ships generated `.d.ts`, engines ≥20.
+- `https://github.com/garmin/fit-javascript-sdk` — `@garmin/fitsdk` 21.202.0 README + LICENSE.txt. Custom Garmin FIT Protocol License (NOT OSI-approved); ESM-only; no first-party types. Reference only — used as a spec-conformance fallback if `fit-file-parser` mis-decodes a real file (per STACK.md "When to switch").
+
+### Project authority
+- `.planning/PROJECT.md` §Out of Scope — "Bundled fixture FIT files: consumers bring their own; tests use generated minimal FIT" (D-FIT-04, D-FIT-05 interpret this as "no runtime-shipped fixtures"; test binaries are fine)
+- `.planning/PROJECT.md` §Open Decisions — "FIT parser choice deferred to research" (resolved here as D-FIT-08)
+- `.planning/REQUIREMENTS.md` §FIT Loader — FIT-01 through FIT-05 (the requirements this phase delivers)
+- `.planning/ROADMAP.md` §Phase 2 — Goal, success criteria, "final FIT-parser license review before code lands" (resolved as D-FIT-08), perf gate <100 ms parse for typical 1-hour file
+
+### Architecture and stack
+- `.planning/research/ARCHITECTURE.md` §Source Layer + §Recommended Project Structure — `src/fit/loader.ts` + `src/fit/normalize.ts`, "thin wrapper around chosen FIT parser, returns plain JS objects, no streams"
+- `.planning/research/STACK.md` §Domain Libraries (`fit-file-parser` row) — version pin, license rationale, dual-publish format
+- `.planning/research/STACK.md` §"The Deferred Decision: FIT Parser Comparison" — full side-by-side; the planner / researcher should re-read this if re-evaluation is requested
+
+### Phase 1 inheritance (don't break these)
+- Phase 1's `src/index.ts` re-export pattern with `.js` extension on relative specifiers (per Phase 1 plan-wide convention) — `src/index.ts` will add `loadFitFromPath`, `loadFitFromBuffer`, `RideRecord`, and the FIT error classes
+- Phase 1's `tsconfig.test.json` extends `tsconfig.json` and includes `test/**/*.ts` — Phase 2 tests use the same project-mode strict type-check
+- Phase 1's exports map split (per-condition `import`/`require` with `.d.ts`/`.d.cts`) — Phase 2 adds entries to the same map, doesn't restructure it
+- Phase 1's typed-error pattern doesn't exist yet (encoder is pure-function); Phase 2 introduces the first error hierarchy, future phases (e.g. replay timeouts) follow the same `extends FitLoadError`-style convention
+
+### Future-coupling notes (don't break these)
+- `RideRecord` is the type Phase 3 (`RideIterator`, `Scheduler`) and Phase 4 (`FakeTransport`) iterate over. The `power?` / `cadence?` choice (D-FIT-01) is the contract — Phase 3 must handle `undefined`, and Phase 1's encoder already does (skips the flag bit when undefined). Don't widen this type without re-checking Phase 1 + Phase 3.
+- `FitRecordSource` interface (D-FIT-08) is the seam for v2 parser swap. Don't import `fit-file-parser` directly from anywhere outside `src/fit/`.
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets (from Phase 1)
+- `src/index.ts` — public API entry; Phase 2 adds named exports for `loadFitFromPath`, `loadFitFromBuffer`, `RideRecord`, and the FIT error classes
+- `tsconfig.test.json` — strict test-mode tsconfig already extends `tsconfig.json`; Phase 2 tests inherit
+- `test/fixtures/README.md` (Phase 1) — provenance/license attestation pattern; mirror it for FIT fixture provenance and the `TEST_FIT_DIR` opt-in path
+- The Phase 1 spec-cited fixture decoder pattern (independent author, in-process, MIT) is the reference for D-FIT-05 fixture provenance
+
+### Established Patterns (from Phase 1)
+- Per-task atomic commits with conventional-commit prefixes (`feat(02-...)`, `test(02-...)`, etc.)
+- All cross-module relative imports use `.js` extensions on the import specifier (Node ESM convention; tsup strips at build)
+- Plan-level `<verification>` blocks acceptance-grep against the working tree
+- File-table source-of-truth pattern (encoder's `FIELDS` const) — analog here would be a `FIT_FIELDS` registry inside `normalize.ts` mapping `(message-num, field-num)` to extraction functions, asserted directly in tests (catches silent registry mutation)
+- Typed error pattern: not yet established; Phase 2 introduces `FitLoadError`-rooted hierarchy as the convention
+
+### Integration Points
+- `src/index.ts` re-exports the public `loadFit*` API + `RideRecord` + error classes; nothing reaches into `src/fit/` from outside the package
+- Phase 3 (`src/replay/`) will import `RideRecord` from `src/types.ts` (or wherever it lands) and consume `loadFitFromBuffer`/`Path` results — Phase 2's contract is the type, not the parser internals
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- **Wire-level honesty matters more than ergonomics.** The user explicitly chose to preserve the absent-vs-zero distinction (D-FIT-01) so VeloWorld can show a "no power signal" UI state distinct from "0 W coasting." Don't collapse to a sentinel "for simplicity."
+- **Phase 3 owns gap policy.** The user explicitly chose not to backfill or tag autopause gaps in the loader (D-FIT-02). Phase 3 will need a deliberate gap-handling policy decision (fast-forward, real-time-pause, skip-gap) — flag this for that phase's discuss.
+- **Test fixture binaries are committed but documented.** Pre-recorded synthetic `.fit` files live in `test/fixtures/`, each with a sibling `.md` explaining what it represents (D-FIT-05). The generator script is one-shot; do NOT add it to CI.
+- **`FitRecordSource` interface is the parser-swap seam.** Don't let `fit-file-parser` types leak past `src/fit/loader.ts`. If a researcher / planner finds the seam awkward, push back on the design before widening the parser surface area.
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+- **`RideRecord.speed` as a third optional field.** Out of scope for v1 per REQUIREMENTS.md FTMS-06 (deferred to v2). When v2 adds the speed-emit code path in the encoder, Phase 2's loader and `RideRecord` type both extend cleanly — but not until then.
+- **Heart rate field in `RideRecord`.** Same — REQUIREMENTS.md FTMS-07, v2.
+- **ReadableStream as a third FIT input source.** REQUIREMENTS.md out-of-scope ("Buffer | path covers test patterns; streaming defers to v1.x"). Re-open if a consumer needs it.
+- **`@garmin/fitsdk` as an alternate parser source behind the same `FitRecordSource` interface.** D-FIT-08 picks `fit-file-parser`. If we hit a real file `fit-file-parser` mis-decodes, the seam exists to add Garmin's SDK in a sibling module — no rewiring of the loader's public contract.
+- **Richer load metadata (drop counts, parser warnings).** D-FIT-09 keeps the public API as `RideRecord[]` returning. If real-world use later needs more visibility, add a separate `loadFitWithDiagnostics(input)` returning `{ records, diagnostics }` rather than widening the simple signature.
+- **Performance tuning beyond the <100 ms gate.** ROADMAP says "<100 ms parse for typical 1-hour file." If `fit-file-parser` clears that on real files, leave it. Buffer pooling, streaming-parse, or worker-thread offload are all v2 / on-demand concerns.
+- **Lint-ban on `fit-file-parser` imports outside `src/fit/`.** Possibly added in Phase 4 ESLint setup (paralleling Phase 1's potential ban on raw `DataView.setUint16`). For Phase 2, enforced by code review only.
+
+</deferred>
+
+---
+
+*Phase: 2-fit-loader-normalization*
+*Context gathered: 2026-05-16*
