@@ -91,7 +91,7 @@ at a real Garmin/Wahoo FIT file.
 | `sendResistance` is echo-only (no replay adjustment) | Keeps replay faithful to source FIT; tests can still assert resistance was called | — Pending |
 | Real-time playback with configurable speed and loop/stop-at-end | Needed for both fast tests and long-soak runs; FIT timestamps drive sample cadence | — Pending |
 | Library-only v1 (no CLI) | CLI is only useful for the BLE-peripheral mode that ships in v2 | — Pending |
-| FIT parser choice deferred to research | Real fixtures + research will compare `fit-file-parser` vs `@garmin/fitsdk-javascript` better than a snap call | — Pending |
+| FIT parser choice deferred to research | Real fixtures + research will compare `fit-file-parser` vs `@garmin/fitsdk-javascript` better than a snap call | Resolved — `fit-file-parser` 3.0 (MIT) chosen in Phase 2 (D-FIT-08); single import wrapped behind `FitRecordSource` seam in `src/fit/loader.ts` so the swap stays a one-file change |
 | No bundled fixture FIT files in v1 | VeloWorld supplies its own; tests use generated/minimal FIT | — Pending |
 
 ## Evolution
@@ -112,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-14 after Phase 1 (Vendored FTMS Codec) completion — `encodeIndoorBikeData` ships in `src/ftms/`, gated by hand-computed byte fixtures + spec-cited MIT decoder round-trip + nRF Connect manual verification. No Active requirements moved to Validated yet (all PROJECT-level requirements are FakeTransport / VeloWorld E2E, which arrive in Phase 4–5).*
+*Last updated: 2026-05-16 after Phase 2 (FIT Loader & Normalization) completion — `loadFitFromPath` / `loadFitFromBuffer` ship in `src/fit/loader.ts`, returning normalized `RideRecord[]` (Unix-ms timestamps, sorted, deduped, real-zero preserved). Backed by 7 committed fixtures (6 scrubbed real rides + 1 hand-rolled shadow) and 50/51 tests (1 intentionally skipped — TEST_FIT_DIR opt-in). Perf gate: ~10 ms median on 76-min fixture (50× headroom under the <100 ms ROADMAP target). Active PROJECT-level requirements (FakeTransport, VeloWorld E2E) still arrive in Phase 4–5; Phase 2's FIT-* requirements are phase-internal and tracked in REQUIREMENTS.md.*
