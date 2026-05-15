@@ -18,10 +18,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-13)
+See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A cycling app developer can run their app end-to-end against a realistic trainer signal — no hardware, no BLE, no flaky integration loop — by importing one library and pointing it at a real Garmin/Wahoo FIT file.
-**Current focus:** Phase 02 — fit-loader-normalization
+**Current focus:** Phase 03 — replay-engine
 
 ## Current Position
 
@@ -63,7 +63,9 @@ Recent decisions affecting current work:
 
 - Roadmap: bottom-up bottom-up linear build (encoder → loader → engine → transport → e2e), coarse granularity, 5 phases (research-aligned)
 - Phase 1: encoder correctness gated on a third-party-decoder round-trip, not just internal byte assertions
-- Phase 2: FIT-parser pick (`fit-file-parser` MIT vs `@garmin/fitsdk` custom license) deferred to phase research
+- Phase 2: `fit-file-parser` 3.0 (MIT) chosen, single import wrapped behind FitRecordSource seam in `src/fit/loader.ts` (D-FIT-08)
+- Phase 2 amendment: developer-field shadow on a standard name (e.g., `power`) is non-fatal — `util.debuglog('trainer-sim:fit')` warning, NOT a typed error (D-FIT-10, FIT-05 amended 2026-05-16)
+- Phase 2: header + CRC validation lives in the loader (parser's CRC check is commented out upstream); typed FitLoadError hierarchy with 4 concrete subclasses (D-FIT-06)
 
 ### Pending Todos
 
@@ -72,8 +74,8 @@ None yet.
 ### Blockers/Concerns
 
 - Phase 1: third-party FTMS decoder harness not yet selected (Auuki JS, PyFTMS, or nRF Connect mobile) — flag for phase research
-- Phase 2: FIT-parser license review pending — flag for phase research
 - Phase 5: VeloWorld lives in a separate repo; integration-test form to be decided in plan-phase
+- Phase 2 followups (advisory, from 02-REVIEW.md): WR-01 signed-shift on dataLength for ≥2GB files; WR-03 records lacking timestamp silently dropped; WR-05 CRC-16/ARC table duplicated across loader/scrub/minimal-fit-bytes
 
 ## Deferred Items
 
@@ -85,6 +87,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-15T19:23:14.721Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-fit-loader-normalization/02-CONTEXT.md
+Last session: 2026-05-16
+Stopped at: Phase 2 complete, ready to plan Phase 3
+Resume file: None
