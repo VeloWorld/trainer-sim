@@ -20,7 +20,9 @@ findings:
   warning: 4
   info: 2
   total: 9
-status: issues_found
+  resolved: 3
+status: critical_resolved
+fix_commit: pending
 ---
 
 # Phase 4: Code Review Report
@@ -67,7 +69,9 @@ under the current type definition.
 
 ## Critical Issues
 
-### CR-01: `connect()` is non-atomic — concurrent calls orphan a Replay
+### CR-01: `connect()` is non-atomic — concurrent calls orphan a Replay [RESOLVED]
+
+**Resolution:** Fixed inline. `connectInFlight` Promise sentinel set before the `await loadRecords()` so concurrent callers share the same in-flight Promise. `disconnect()` and `reset()` await it before their early-return guards (this also closes WR-03 for free). Regression test added at `test/transport/fake-transport.test.ts` Group 10 ("CR-01: two concurrent connect() calls do not orphan a Replay") — 3 records emit exactly 3 times, not 6.
 
 **File:** `src/transport/fake-transport.ts:189-214`
 **Issue:**
@@ -145,7 +149,9 @@ it('two concurrent connect() calls do not orphan a Replay (D-API-04 idempotency)
 
 ---
 
-### CR-02: Empty-records source wedges the transport (deadlock on subsequent disconnect)
+### CR-02: Empty-records source wedges the transport (deadlock on subsequent disconnect) [RESOLVED]
+
+**Resolution:** Fixed inline. `connect()` rejects with `createFakeTransport.connect: source produced zero records` BEFORE `new Replay(...)` runs. `replay` only commits AFTER `start()` returns without throwing — defense-in-depth against any future Replay.start() throw path. Regression test added at Group 10 ("CR-02: connect() with zero records rejects AND leaves the transport reconnectable") — verifies a second connect() rejects identically (no stale-replay short-circuit) and that disconnect() resolves rather than hanging.
 
 **File:** `src/transport/fake-transport.ts:189-214` (interaction with `src/replay/replay.ts:213`)
 **Issue:**
@@ -225,7 +231,9 @@ it('connect() with zero records rejects AND leaves the transport reconnectable',
 
 ---
 
-### CR-03: Throwing `'complete'` listener becomes `unhandledRejection`
+### CR-03: Throwing `'complete'` listener becomes `unhandledRejection` [RESOLVED]
+
+**Resolution:** Fixed inline. `emitter.emit('complete')` is now wrapped in try/catch with `debuglog('trainer-sim:transport')` swallow — matches the per-handler discipline already in the `onRecord` fan-out. Regression test added at Group 10 ("CR-03: a throwing 'complete' listener does NOT register as unhandledRejection") — registers a `process.on('unhandledRejection', ...)` listener around a throwing `'complete'` handler and asserts zero unhandled rejections after microtask drain.
 
 **File:** `src/transport/fake-transport.ts:209-212`
 **Issue:**
@@ -406,7 +414,11 @@ And tighten the JSDoc in `src/types.ts:238-247`:
 
 ---
 
-### WR-03: `reset()` racing with in-flight `connect()` is unobservable
+### WR-03: `reset()` racing with in-flight `connect()` is unobservable [RESOLVED]
+
+**Resolution:** Closed by the CR-01 fix. `disconnect()` (which `reset()` calls) now awaits `connectInFlight` before its early-return guard, so an unawaited connect-then-reset sequence drains the in-flight connect before disconnect's quiet check. The remaining advisory items in this section are kept as Phase 4 followups.
+
+**Original report:**
 
 **File:** `src/transport/fake-transport.ts:241-244`
 **Issue:**
