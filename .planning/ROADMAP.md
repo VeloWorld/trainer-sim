@@ -78,7 +78,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. After `disconnect()` resolves, no further `onData` callbacks fire (verified by a "wait 100 ms after disconnect, assert zero emissions" test)
 **Plans**: 4 plans
 - [x] 03-01-PLAN.md — Foundation: src/replay/types.ts (ReplayConfig + ReplayState) + src/replay/scheduler.ts (drift-corrected runScheduler async fn, D-REPL-01..06/09) — Wave 1
-- [ ] 03-02-PLAN.md — Replay class: src/replay/replay.ts (lifecycle wrapper, single-subscriber, AbortController, completed Promise, D-REPL-07..13) — Wave 2
+- [x] 03-02-PLAN.md — Replay class: src/replay/replay.ts (lifecycle wrapper, single-subscriber, AbortController, completed Promise, D-REPL-07..13) — Wave 2
 - [ ] 03-03-PLAN.md — Unit-test suite: test/replay/{scheduler,replay,abort,loop}.test.ts (vi.useFakeTimers; REPL-01/02/04/05/06) — Wave 3
 - [ ] 03-04-PLAN.md — Soak suite: test/replay/{soak-proxy,soak}.test.ts (real-clock; REPL-03 drift gate, opt-in via RUN_SOAK=1) — Wave 3
 **Notes**:
