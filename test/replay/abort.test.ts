@@ -234,4 +234,95 @@ describe('Replay — abort / cancellation tests', () => {
       expect(replay.currentState).toBe('aborted');
     });
   });
+
+  describe('Group 5 — CR-01 regression: post-sleep abort window (D-REPL-10)', () => {
+    it('abort that lands BETWEEN sleep-return and synchronous emit drops the would-be emission', async () => {
+      // CR-01 race-window scenario: the scheduler's `await sleep(...)`
+      // resolves naturally (timer fired), and BEFORE the subsequent
+      // synchronous `emit(record)` runs, signal.aborted becomes true.
+      // Without the post-sleep abort guard, one ghost emission fires.
+      // With the guard (scheduler.ts step 4d), the scheduler sees
+      // signal.aborted and throws signal.reason instead of emitting.
+      //
+      // We construct the race deterministically with a custom sleep that
+      // (1) resolves the inner timer normally, then (2) flips signal.aborted
+      // to true by calling replay.stop() in the same microtask, BEFORE the
+      // awaiter resumes. The post-sleep guard is what catches it.
+      const records = makeRecords(5);
+      const emitted: number[] = [];
+      let replayRef: Replay | undefined;
+
+      // Race-injecting sleep: lets the FIRST sleep resolve cleanly (one
+      // emission fires at cursor=0), then on the SECOND sleep we abort
+      // exactly between resolve() and the awaiter's resumption.
+      let sleepCount = 0;
+      const raceSleep = (
+        delay: number,
+        _value?: undefined,
+        options?: { signal?: AbortSignal },
+      ): Promise<void> => {
+        return new Promise<void>((resolve, reject) => {
+          const signal = options?.signal;
+          if (signal?.aborted) {
+            const err = new Error('The operation was aborted');
+            (err as { name: string }).name = 'AbortError';
+            reject(err);
+            return;
+          }
+          const onAbort = (): void => {
+            clearTimeout(handle);
+            const err = new Error('The operation was aborted');
+            (err as { name: string }).name = 'AbortError';
+            reject(err);
+          };
+          const handle = globalThis.setTimeout(() => {
+            signal?.removeEventListener('abort', onAbort);
+            sleepCount++;
+            // On the SECOND sleep: engineer the CR-01 race.
+            // Order matters here: (1) call resolve() — the timer winning
+            // the race over abort; (2) THEN call replay.stop() — flipping
+            // signal.aborted to true synchronously. The awaiter for this
+            // sleep will resume in the next microtask, and at that point
+            // signal.aborted === true. The post-sleep abort guard
+            // (scheduler.ts step 4d) catches it; without the guard, the
+            // synchronous emit fires anyway → ghost emission.
+            if (sleepCount === 2) {
+              resolve();
+              replayRef?.stop();
+            } else {
+              resolve();
+            }
+          }, delay);
+          signal?.addEventListener('abort', onAbort, { once: true });
+        });
+      };
+
+      const replay = new Replay({
+        records,
+        speed: 1,
+        loop: false,
+        maxEmissionHz: 1000,
+      });
+      replayRef = replay;
+      replay.onRecord((r) => emitted.push(r.timestamp));
+      replay.start({ sleep: raceSleep });
+      replay.completed.catch(() => undefined);
+
+      // Drive enough fake-timer time for the first two sleeps to resolve.
+      await vi.advanceTimersByTimeAsync(500);
+
+      // Sleep 1 (cursor=0) resolves cleanly → emit(t=1000). emitted=[1000].
+      // Sleep 2 (cursor=1) resolves and immediately aborts in the SAME timer
+      // callback. With the fix (scheduler.ts step 4d): the post-sleep guard
+      // sees signal.aborted=true and throws BEFORE emit fires — the cursor=1
+      // record is NOT emitted. Without the fix: emit(t=1100) fires anyway —
+      // a ghost emission, violating REPL-06 / D-REPL-10.
+      //
+      // Strict assertion: exactly ONE emission (cursor=0 only).
+      expect(emitted).toEqual([1000]);
+      // And the replay ends aborted, not done.
+      await expect(replay.completed).rejects.toMatchObject({ name: 'AbortError' });
+      expect(replay.currentState).toBe('aborted');
+    });
+  });
 });

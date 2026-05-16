@@ -254,6 +254,16 @@ export class Replay {
         this.completedDeferred.reject(err);
       },
     );
+
+    // CR-02: Defuse the unhandled-rejection trap. `completedDeferred.promise`
+    // is created eagerly in the constructor; if a caller follows the
+    // documented `replay.start(); /* setup */; await replay.completed;`
+    // pattern and the scheduler aborts before the await attaches a handler,
+    // Node 24 emits an unhandledRejection warning. Attaching a no-op .catch
+    // here marks the promise as handled — consumers' later .then/.catch
+    // still observe the rejection (Promise rejection is fan-out, not
+    // consumed).
+    this.completedDeferred.promise.catch(() => undefined);
   }
 
   /**

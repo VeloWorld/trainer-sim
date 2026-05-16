@@ -226,7 +226,17 @@ export async function runScheduler(input: SchedulerInput): Promise<void> {
     // here — RESEARCH §Pitfall 4 + 03-RESEARCH AbortController teardown.
     await sleep(delay, undefined, { signal });
 
-    // 4d — Emit and advance. Emit is synchronous by contract.
+    // 4d — Re-check abort between sleep-return and emit (CR-01 / D-REPL-10).
+    // `await sleep(...)` resolving and the synchronous `emit(record)` below
+    // are not atomic; if `replay.stop()` aborts in another microtask after
+    // sleep resolves but before emit fires, we MUST NOT emit. Without this
+    // guard, one ghost record can land after `disconnect()` resolves —
+    // a direct REPL-06 violation.
+    if (signal.aborted) {
+      throw signal.reason;
+    }
+
+    // 4e — Emit and advance. Emit is synchronous by contract.
     emit(record);
     cursor++;
 
