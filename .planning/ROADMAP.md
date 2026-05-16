@@ -96,8 +96,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `reset()` clears `received.resistance` and rewinds the replay cursor so a single instance can be reused across `afterEach()`-isolated tests
   5. `publint` and `@arethetypeswrong/cli` both pass against the published package shape; importing the library into a fresh strict-mode TypeScript Node 24 project requires no `@types/*` shim
 **Plans**: 6 plans
-- [ ] 04-01-PLAN.md — Lift fakeAwareSleep to test/_helpers/ + migrate 4 Phase 3 test files (Phase 3 followup IN-01 fold, D-API-24) — Wave 1
-- [ ] 04-02-PLAN.md — Add ITrainerTransport / FakeTransport / FakeTransportConfig / FakeTransportSource to src/types.ts (API-02, API-08; D-API-01/02/05/13) — Wave 1
+- [x] 04-01-PLAN.md — Lift fakeAwareSleep to test/_helpers/ + migrate 4 Phase 3 test files (Phase 3 followup IN-01 fold, D-API-24) — Wave 1
+- [x] 04-02-PLAN.md — Add ITrainerTransport / FakeTransport / FakeTransportConfig / FakeTransportSource to src/types.ts (API-02, API-08; D-API-01/02/05/13) — Wave 1
 - [ ] 04-03-PLAN.md — Implement src/transport/fake-transport.ts factory + src/index.ts re-exports (API-01..06; D-API-04..20; closes Phase 3 followup WR-05) — Wave 2
 - [ ] 04-04-PLAN.md — test/transport/fake-transport.test.ts unit tests (API-01..06; records-source fast path, vi.useFakeTimers) — Wave 3
 - [ ] 04-05-PLAN.md — test/transport/path-and-buffer.test.ts integration tests against basic.fit (API-01, API-04; FitLoadError bubble) — Wave 3
@@ -131,7 +131,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Vendored FTMS Codec | 0/TBD | Not started | - |
 | 2. FIT Loader & Normalization | 0/5 | Not started | - |
 | 3. Replay Engine | 0/TBD | Not started | - |
-| 4. FakeTransport & Public API | 0/TBD | Not started | - |
+| 4. FakeTransport & Public API | 2/6 | In Progress|  |
 | 5. VeloWorld End-to-End Validation | 0/TBD | Not started | - |
 
 ## Risks & Coordination Points
