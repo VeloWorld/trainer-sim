@@ -189,8 +189,21 @@ export class Replay {
    * Signal composition (RESEARCH §Open Questions Q3): if an external signal
    * is supplied, `AbortSignal.any([external, internal])` produces the
    * composite signal the scheduler awaits. Either source aborts cleanly.
+   *
+   * `sleep` is an optional test-only injection seam — production callers
+   * never pass it. Plan 03-03's tests pass a `globalThis.setTimeout`-based
+   * variant because Vitest 4 cannot fake the `node:timers/promises`
+   * module-level binding (RESEARCH §Pitfall 6 parallel — same fix as
+   * `getNow` and the scheduler's `sleep` seam from plan 03-03 fix commit).
    */
-  start(config?: { signal?: AbortSignal }): void {
+  start(config?: {
+    signal?: AbortSignal;
+    sleep?: (
+      delay: number,
+      value?: undefined,
+      options?: { signal?: AbortSignal },
+    ) => Promise<void>;
+  }): void {
     if (this.subscriber === undefined) {
       throw new Error('Replay.start: onRecord must be called before start() (D-REPL-11)');
     }
@@ -230,6 +243,7 @@ export class Replay {
       // `globalThis.performance` at call time so `vi.useFakeTimers()` (which
       // replaces the global) takes effect for tests.
       getNow: () => globalThis.performance.now(),
+      sleep: config?.sleep,
     }).then(
       () => {
         this.state = 'done';
