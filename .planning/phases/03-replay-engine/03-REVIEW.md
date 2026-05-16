@@ -14,10 +14,13 @@ files_reviewed_list:
   - test/replay/soak-proxy.test.ts
   - test/replay/soak.test.ts
 findings:
-  critical: 2
+  critical: 0
   warning: 6
   info: 4
-  total: 12
+  total: 10
+  resolved:
+    - CR-01 (commit e4b04a9 — post-sleep abort guard in scheduler.ts step 4d + regression test in abort.test.ts Group 5)
+    - CR-02 (commit e4b04a9 — internal no-op .catch on completedDeferred.promise after rejection wiring in replay.ts)
 status: issues_found
 ---
 
