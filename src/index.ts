@@ -1,4 +1,4 @@
-/** trainer-sim public API. Phase 1: encoder + type. Phase 2: FIT loader + types + errors. Phase 4 will add ITrainerTransport and createFakeTransport. */
+/** trainer-sim public API. Phase 1: encoder + type. Phase 2: FIT loader + types + errors. Phase 4: FakeTransport public surface (createFakeTransport + ITrainerTransport / FakeTransport / FakeTransportConfig / FakeTransportSource). */
 
 export { encodeIndoorBikeData } from './ftms/indoor-bike-data.js';
 export type { IndoorBikeRecord } from './ftms/indoor-bike-data.js';
@@ -20,3 +20,12 @@ export {
   FitTruncatedError,
   NoRecordMessagesError,
 } from './fit/errors.js';
+
+// Phase 4: FakeTransport public surface (D-API-07).
+export { createFakeTransport } from './transport/fake-transport.js';
+export type {
+  ITrainerTransport,
+  FakeTransport,
+  FakeTransportConfig,
+  FakeTransportSource,
+} from './types.js';
