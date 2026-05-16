@@ -95,9 +95,18 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Calling `sendResistance(grade)` records the grade in `received.resistance` (in order) and does not modify any subsequent emitted power or cadence value
   4. `reset()` clears `received.resistance` and rewinds the replay cursor so a single instance can be reused across `afterEach()`-isolated tests
   5. `publint` and `@arethetypeswrong/cli` both pass against the published package shape; importing the library into a fresh strict-mode TypeScript Node 24 project requires no `@types/*` shim
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 04-01-PLAN.md — Lift fakeAwareSleep to test/_helpers/ + migrate 4 Phase 3 test files (Phase 3 followup IN-01 fold, D-API-24) — Wave 1
+- [ ] 04-02-PLAN.md — Add ITrainerTransport / FakeTransport / FakeTransportConfig / FakeTransportSource to src/types.ts (API-02, API-08; D-API-01/02/05/13) — Wave 1
+- [ ] 04-03-PLAN.md — Implement src/transport/fake-transport.ts factory + src/index.ts re-exports (API-01..06; D-API-04..20; closes Phase 3 followup WR-05) — Wave 2
+- [ ] 04-04-PLAN.md — test/transport/fake-transport.test.ts unit tests (API-01..06; records-source fast path, vi.useFakeTimers) — Wave 3
+- [ ] 04-05-PLAN.md — test/transport/path-and-buffer.test.ts integration tests against basic.fit (API-01, API-04; FitLoadError bubble) — Wave 3
+- [ ] 04-06-PLAN.md — test/transport/publish.test.ts build+publint+attw smoke test against built dist/ (API-07, API-08) — Wave 4
 **Notes**:
   - The `ITrainerTransport` interface owns the async semantics for `sendResistance` (force a microtask boundary even in Fake) and forbids any BLE-specific types in the import graph — these decisions ripple through every test and into v2's BlenoTransport, so settle them here.
+  - Phase 4 is a thin glue phase per Phase 3 RESEARCH (line 96): the keystone is Plan 04-03 (~150-200 LOC factory composing existing Phase 1/2/3 building blocks). Plans 04-01 + 04-02 are foundation; 04-04/05 are tests; 04-06 is the publish-hygiene smoke test against the built artifact.
+  - HIGH-severity threat: BLE-type leak through public type graph (D-API-03) — would silently break dual-publish for CJS consumers without bleno installed. Mitigated by acceptance grep in Plan 04-03 + attw run in Plan 04-06 (defense-in-depth).
+  - `package.json` and `tsup.config.ts` are NOT modified in Phase 4 (D-API-08; verified by Plan 04-06 Test 5).
 
 ### Phase 5: VeloWorld End-to-End Validation
 **Goal**: VeloWorld's dev/test build runs green end-to-end against FakeTransport replaying a real Garmin/Wahoo FIT file, on both macOS and Linux
