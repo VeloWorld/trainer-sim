@@ -20,18 +20,17 @@ at a real Garmin/Wahoo FIT file.
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- [x] FakeTransport library exposes an `ITrainerTransport`-shaped interface (`connect`, `disconnect`, `onData`, `sendResistance`) — validated in Phase 4 (API-01..03)
+- [x] FakeTransport replays power and cadence from a real Garmin/Wahoo FIT file — validated in Phase 4 against `test/fixtures/fit/basic.fit` (API-01 + integration tests in `test/transport/path-and-buffer.test.ts`)
+- [x] Replay timing is real-time and respects FIT record timestamps (configurable speed multiplier and loop/stop-at-end) — validated in Phase 3 + surfaced through FakeTransport in Phase 4 (REPL-01..06)
+- [x] FakeTransport emits FTMS IndoorBikeData-encoded `DataView` payloads to subscribers (codec vendored in this repo) — validated in Phase 4 (per-record collapse in `src/transport/fake-transport.ts:204-207` + Phase 1 encoder)
+- [x] `sendResistance(grade)` is recorded for test assertions and does not modify replayed values (echo-only) — validated in Phase 4 (API-04, API-05; echo-only proven against FIT-driven payload in `test/transport/path-and-buffer.test.ts` Group 4)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] FakeTransport library exposes an `ITrainerTransport`-shaped interface (`connect`, `disconnect`, `onData`, `sendResistance`)
-- [ ] FakeTransport replays power and cadence from a real Garmin/Wahoo FIT file
-- [ ] Replay timing is real-time and respects FIT record timestamps (configurable speed multiplier and loop/stop-at-end)
-- [ ] FakeTransport emits FTMS IndoorBikeData-encoded `DataView` payloads to subscribers (codec vendored in this repo)
-- [ ] `sendResistance(grade)` is recorded for test assertions and does not modify replayed values (echo-only)
-- [ ] VeloWorld's dev/test build runs end-to-end against FakeTransport with a real FIT file
+- [ ] VeloWorld's dev/test build runs end-to-end against FakeTransport with a real FIT file — Phase 5
 
 ### Out of Scope
 
@@ -112,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-16 after Phase 3 (Replay Engine) completion — internal `Replay` class + drift-corrected scheduler ship in `src/replay/`, consuming `RideRecord[]` from Phase 2 and emitting them in real time with AbortSignal-based cancellation, Promise-first completion, configurable speed/cap, and loop boundary re-base. 77/79 tests pass (2 intentionally skipped: TEST_FIT_DIR + RUN_SOAK opt-ins). Code review caught 2 BLOCKER bugs (CR-01 post-sleep abort race, CR-02 unhandledRejection) — both fixed with regression test in commit `e4b04a9`. Replay surface is internal in this phase; Phase 4 will surface it through the public `ITrainerTransport` API. Active PROJECT-level requirements (FakeTransport, VeloWorld E2E) arrive in Phase 4–5.*
+*Last updated: 2026-05-16 after Phase 4 (FakeTransport & Public API) completion — `createFakeTransport(config)` factory ships at `src/transport/fake-transport.ts` (267 LOC) composing Phase 3's `Replay`, Phase 2's loader, and Phase 1's encoder behind the canonically-defined `ITrainerTransport` contract in `src/types.ts`. Public surface adds `createFakeTransport` + 3 type aliases to `src/index.ts`. Dual ESM/CJS publish hygiene validated by `publint` + `@arethetypeswrong/cli` against the built `dist/` (115/117 tests pass — same 2 intentional opt-in skips as Phase 3). Code review caught 3 BLOCKERs in the keystone factory (CR-01 connect race; CR-02 empty-records deadlock; CR-03 unhandledRejection from throwing `'complete'` listener) — all 3 fixed inline with Group 10 regression tests; mirrors the Phase 3 BLOCKER discipline. The five v1 FakeTransport-related PROJECT requirements move to Validated; only `VeloWorld E2E` remains Active for Phase 5.*
