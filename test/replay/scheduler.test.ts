@@ -35,6 +35,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runScheduler } from '../../src/replay/scheduler.js';
 import type { RideRecord } from '../../src/types.js';
+import { fakeAwareSleep } from '../_helpers/fake-aware-sleep.js';
 
 /**
  * Helper — construct N synthetic records with a fixed ms cadence. Mirrors the
@@ -44,41 +45,6 @@ import type { RideRecord } from '../../src/types.js';
  */
 function makeRecords(count: number, cadenceMs = 100): RideRecord[] {
   return Array.from({ length: count }, (_, i) => ({ timestamp: i * cadenceMs }));
-}
-
-/**
- * Test-only AbortSignal-aware sleep using `globalThis.setTimeout` (which
- * Vitest 4's `vi.useFakeTimers()` DOES intercept — RESEARCH §Pitfall 6
- * parallel). Mirrors the contract the production `node:timers/promises`
- * `setTimeout` honors: rejects with AbortError on signal abort, resolves
- * after `delay` ms otherwise, cleans up its abort listener on natural
- * completion.
- */
-function fakeAwareSleep(
-  delay: number,
-  _value?: undefined,
-  options?: { signal?: AbortSignal },
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const signal = options?.signal;
-    if (signal?.aborted) {
-      const err = new Error('The operation was aborted');
-      (err as { name: string }).name = 'AbortError';
-      reject(err);
-      return;
-    }
-    const onAbort = (): void => {
-      clearTimeout(handle);
-      const err = new Error('The operation was aborted');
-      (err as { name: string }).name = 'AbortError';
-      reject(err);
-    };
-    const handle = globalThis.setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, delay);
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 describe('runScheduler — fake-timer unit tests', () => {
