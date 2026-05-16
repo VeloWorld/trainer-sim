@@ -459,4 +459,54 @@ describe('FakeTransport — factory unit tests', () => {
       expect(fireCount).toBe(0);
     });
   });
+
+  describe('Group 10 — code-review regression: CR-01 race, CR-02 empty-records, CR-03 throwing complete listener', () => {
+    it('CR-01: two concurrent connect() calls do not orphan a Replay (D-API-04 idempotency)', async () => {
+      const transport = newTransport(makeRecords(3, 50));
+      const emitted: DataView[] = [];
+      transport.onData((dv) => emitted.push(dv));
+      const completed = once(transport, 'complete');
+      await Promise.all([transport.connect(), transport.connect()]);
+      await vi.advanceTimersByTimeAsync(500);
+      await completed;
+      // 3 records × 1 Replay = 3 emissions. An orphaned second Replay would emit 6.
+      expect(emitted).toHaveLength(3);
+    });
+
+    it('CR-02: connect() with zero records rejects AND leaves the transport reconnectable', async () => {
+      const transport = createFakeTransport(
+        { source: { records: [] } },
+        { sleep: fakeAwareSleep },
+      );
+      await expect(transport.connect()).rejects.toThrow(/zero records/);
+      // Critical: the SECOND connect() must produce the SAME rejection — not
+      // silently short-circuit on a stale `replay` reference.
+      await expect(transport.connect()).rejects.toThrow(/zero records/);
+      // disconnect() must not hang — the deadlock CR-02 documents.
+      await expect(transport.disconnect()).resolves.toBeUndefined();
+    });
+
+    it("CR-03: a throwing 'complete' listener does NOT register as unhandledRejection", async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      try {
+        const transport = newTransport(makeRecords(2, 50));
+        transport.on('complete', () => {
+          throw new Error('boom');
+        });
+        await transport.connect();
+        await vi.advanceTimersByTimeAsync(200);
+        // Drain the microtask queue so any unhandled rejection has had a chance
+        // to surface before the assertion runs.
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(unhandled).toHaveLength(0);
+      } finally {
+        process.off('unhandledRejection', onUnhandled);
+      }
+    });
+  });
 });

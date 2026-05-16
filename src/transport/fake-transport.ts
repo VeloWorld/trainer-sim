@@ -178,6 +178,11 @@ export function createFakeTransport(
    * when undefined — defense-in-depth idempotency.
    */
   let replay: Replay | undefined;
+  // CR-01 — concurrent `connect()` callers share the same in-flight Promise so
+  // a second caller cannot bypass the `replay !== undefined` guard during the
+  // `await loadRecords()` window. `disconnect()`/`reset()` await this too so
+  // they cannot race past an in-flight connect (closes WR-03).
+  let connectInFlight: Promise<void> | undefined;
 
   async function loadRecords(): Promise<ReadonlyArray<RideRecord>> {
     const src = config.source;
@@ -186,34 +191,68 @@ export function createFakeTransport(
     return loadFitFromPath(src.path);
   }
 
-  async function connect(): Promise<void> {
-    if (replay !== undefined) return;
-    const records = await loadRecords();
-    replay = new Replay({ records, speed, loop, maxEmissionHz });
-    replay.onRecord((rec) => {
-      const dv = encodeIndoorBikeData({
-        power: rec.power ?? 0,
-        cadence: rec.cadence ?? 0,
-      });
-      for (const h of subscribers) {
-        try {
-          h(dv);
-        } catch (err) {
-          log('subscriber threw: %O', err);
+  function connect(): Promise<void> {
+    if (replay !== undefined) return Promise.resolve();
+    if (connectInFlight !== undefined) return connectInFlight;
+    connectInFlight = (async () => {
+      try {
+        const records = await loadRecords();
+        // CR-02 — reject empty-records source at the public boundary so
+        // `replay` never points at a never-started Replay (Phase 3's D-REPL-13
+        // throws synchronously on `start()` but only after the constructor
+        // assigns; without this guard the transport wedges permanently).
+        if (records.length === 0) {
+          throw new Error('createFakeTransport.connect: source produced zero records');
         }
+        const r = new Replay({ records, speed, loop, maxEmissionHz });
+        r.onRecord((rec) => {
+          const dv = encodeIndoorBikeData({
+            power: rec.power ?? 0,
+            cadence: rec.cadence ?? 0,
+          });
+          for (const h of subscribers) {
+            try {
+              h(dv);
+            } catch (err) {
+              log('subscriber threw: %O', err);
+            }
+          }
+        });
+        // CR-03 — wrap `emitter.emit('complete')` in try/catch. EventEmitter
+        // re-throws listener exceptions synchronously and the surrounding
+        // `.then(success, failure)` does NOT catch errors thrown in the
+        // `success` arm; a throwing `'complete'` listener would otherwise
+        // surface as `unhandledRejection`. Per-handler try/catch matches the
+        // `onRecord` fan-out discipline above.
+        r.completed.then(
+          () => {
+            try {
+              emitter.emit('complete');
+            } catch (err) {
+              log("'complete' listener threw: %O", err);
+            }
+          },
+          () => undefined,
+        );
+        // CR-02 — only commit `replay` after `start()` returns without throwing.
+        // Defense-in-depth against any future Replay.start() throw path
+        // (D-REPL-09 pre-aborted signal also throws synchronously).
+        r.start(options?.sleep ? { sleep: options.sleep } : undefined);
+        replay = r;
+      } finally {
+        connectInFlight = undefined;
       }
-    });
-    // `.then(success, failure)` attaches BOTH handlers eagerly so the abort
-    // rejection (D-API-12 — abort path is silent) never surfaces as
-    // `unhandledRejection`. Mirrors `src/replay/replay.ts:247-256`.
-    replay.completed.then(
-      () => emitter.emit('complete'),
-      () => undefined,
-    );
-    replay.start(options?.sleep ? { sleep: options.sleep } : undefined);
+    })();
+    return connectInFlight;
   }
 
   async function disconnect(): Promise<void> {
+    // WR-03 — drain any in-flight connect() FIRST so its synchronous `replay = r`
+    // assignment cannot land after we returned from disconnect(). Swallow its
+    // rejection here — the connect() caller's own awaiter still observes it.
+    if (connectInFlight !== undefined) {
+      await connectInFlight.catch(() => undefined);
+    }
     if (replay === undefined) return;
     // Capture locally and clear BEFORE the await so a re-entrant connect()
     // during the unwind constructs a fresh Replay cleanly.
