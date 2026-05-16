@@ -795,22 +795,19 @@ Skipped per `.planning/config.json` `workflow.nyquist_validation: false`. Phase 
 | A7 | `AbortSignal.any([userSignal, internalController.signal])` is available in Node 24 | Anti-Patterns to Avoid (composition note) | LOW — added in Node 20 (LTS Iron) and stable in Node 24. Verifiable via `'any' in AbortSignal`. |
 | A8 | A single-subscriber pattern is sufficient for Phase 3 unit tests | Subscriber-not-set pitfall | LOW — D-REPL-11 LOCKED. Phase 4 fans out. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Restart after stop-at-end (D-REPL-07 Claude's Discretion).**
-   - What we know: D-REPL-07 says "subsequent `start()` calls throw or restart from cursor 0 (decision deferred — see Claude's Discretion)."
-   - What's unclear: User preference for "throw — replay instances are single-use" vs "restart — instances are reusable." Phase 4 will likely want reusability for FakeTransport's `reset()` (API-06).
-   - Recommendation: **Throw in Phase 3** (single-use). Phase 4's `reset()` constructs a fresh `Replay` instance internally — that's the reusable surface, not Replay itself. This keeps Replay's state machine maximally simple (running → done; running → aborted) without a "done → running" transition.
+1. **Restart after stop-at-end (D-REPL-07 Claude's Discretion).** RESOLVED: **Throw — single-use Replay.**
+   - What we knew: D-REPL-07 said "subsequent `start()` calls throw or restart from cursor 0 (decision deferred)."
+   - Resolution: Phase 4's `reset()` constructs a fresh `Replay` instance internally — that's the reusable surface, not Replay itself. Keeps Replay's state machine maximally simple (running → done; running → aborted) without a "done → running" transition. Locked into 03-02 Task 1 acceptance.
 
-2. **Abort error semantics — reject vs. resolve-with-sentinel.**
-   - What we know: D-REPL-09 says "reject `replay.completed` with the abort reason (or resolve with sentinel — TBD in planning)."
-   - What's unclear: Whether the user wants the `await replay.completed` pattern to throw on cancel (matches `fetch`) or return a `{ aborted: true }` value.
-   - Recommendation: **Reject with `AbortError` (or `signal.reason` if set).** Matches the `fetch` AbortController convention; matches `node:timers/promises` `setTimeout` rejection behavior; matches the user's CONTEXT.md note "lean toward reject (matches `fetch` AbortController convention)." Phase 4 wraps this and decides how to translate the rejection into its `disconnect()` Promise.
+2. **Abort error semantics — reject vs. resolve-with-sentinel.** RESOLVED: **Reject with `signal.reason ?? AbortError`.**
+   - What we knew: D-REPL-09 said "reject `replay.completed` with the abort reason (or resolve with sentinel — TBD)."
+   - Resolution: Matches `fetch` AbortController convention and `node:timers/promises` setTimeout rejection. Matches CONTEXT.md user lean. Phase 4 wraps this and decides how to translate the rejection into its `disconnect()` Promise. Locked into 03-02 Task 1 + 03-03 abort.test.ts.
 
-3. **External vs. internal AbortSignal composition.**
-   - What we know: D-REPL-09 says replay accepts `{ signal?: AbortSignal }` in start config AND replay holds an internal controller for `replay.stop()`.
-   - What's unclear: How to compose them. Two signals → one source of truth.
-   - Recommendation: Use `AbortSignal.any([externalSignal, internalController.signal])` (Node 20+, stable in 24) inside `start()`. Either path aborts the scheduler. Plan should pin this composition pattern explicitly — it's the kind of thing an implementer might "improve" by hand-rolling a wrapper, which would re-introduce listener-leak risk.
+3. **External vs. internal AbortSignal composition.** RESOLVED: **`AbortSignal.any([externalSignal, internalController.signal])`.**
+   - What we knew: D-REPL-09 said replay accepts `{ signal?: AbortSignal }` AND replay holds an internal controller for `replay.stop()`.
+   - Resolution: Node 20+, stable in 24. Either path aborts the scheduler. Hand-rolling a wrapper re-introduces listener-leak risk per Pitfall 3. Locked into 03-02 Task 1 step 3e.
 
 ## Project Constraints (from CLAUDE.md)
 
