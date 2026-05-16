@@ -67,7 +67,7 @@
 // threat model documents WHY a future regression that imports the global
 // `setTimeout` here would re-introduce the §3 listener-leak antipattern.
 
-import { setTimeout as sleep } from 'node:timers/promises';
+import { setTimeout as defaultSleep } from 'node:timers/promises';
 import { debuglog } from 'node:util';
 import type { ReplayConfig } from './types.js';
 import type { RideRecord } from '../types.js';
@@ -98,6 +98,21 @@ const log = debuglog('trainer-sim:replay');
  *                  fake clock OR rely on `vi.useFakeTimers()` faking the
  *                  global `performance.now()` and pass the global form.
  */
+/**
+ * Type of the AbortSignal-aware delay primitive the scheduler awaits — matches
+ * the `node:timers/promises` `setTimeout(delay, value, options)` signature
+ * we ship in production. Tests inject a `globalThis.setTimeout`-based variant
+ * because Vitest 4's `vi.useFakeTimers()` does NOT intercept the
+ * `node:timers/promises` module (only `globalThis.setTimeout`). Production
+ * wiring (in plan 03-02 `Replay.start`) passes the real `node:timers/promises`
+ * setTimeout — RESEARCH §AbortController teardown pitfalls.
+ */
+type SleepFn = (
+  delay: number,
+  value?: undefined,
+  options?: { signal?: AbortSignal },
+) => Promise<void>;
+
 interface SchedulerInput {
   /** Time-ordered ride records (sorted ascending by timestamp; length >= 1 except for the §9 defense-in-depth early return). */
   records: ReadonlyArray<RideRecord>;
@@ -113,6 +128,15 @@ interface SchedulerInput {
   emit: (record: RideRecord) => void;
   /** Monotonic-clock injection seam. D-REPL-03 + RESEARCH §Pitfall 6. */
   getNow: () => number;
+  /**
+   * AbortSignal-aware delay primitive. Optional — defaults to the
+   * `node:timers/promises` `setTimeout` import above (production wiring).
+   * Tests inject a `globalThis.setTimeout`-based variant because Vitest 4
+   * cannot fake the `node:timers/promises` module-level binding (parallel to
+   * §Pitfall 6's `getNow` seam — same root cause: ESM static imports of
+   * built-in `node:` modules are captured before `vi.useFakeTimers()` runs).
+   */
+  sleep?: SleepFn;
 }
 
 // Safety: ReplayConfig and SchedulerInput share four fields by design (the
@@ -150,7 +174,11 @@ export async function runScheduler(input: SchedulerInput): Promise<void> {
   // Step 2 — Destructure and compute invariants. `minIntervalMs` is the
   // floor used both by D-REPL-04 (Infinity-clamp) and as a general
   // rate-limit; `firstTs` anchors the absolute-target-time math (D-REPL-02).
+  // `sleep` defaults to the `node:timers/promises` import in production;
+  // tests inject a `globalThis.setTimeout`-based variant (Pitfall 6 parallel —
+  // Vitest 4 cannot fake the `node:timers/promises` module binding).
   const { records, speed, loop, maxEmissionHz, signal, emit, getNow } = input;
+  const sleep = input.sleep ?? defaultSleep;
   const minIntervalMs = 1000 / maxEmissionHz;
   const firstTs = records[0]!.timestamp;
 
