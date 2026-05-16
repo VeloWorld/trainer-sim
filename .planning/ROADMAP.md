@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Vendored FTMS Codec** - Byte-correct IndoorBikeData encoder gated on spec-cited MIT decoder round-trip + hand-computed byte fixtures + one-shot nRF Connect manual verification
 - [ ] **Phase 2: FIT Loader & Normalization** - Real Garmin/Wahoo FIT files become a clean RideRecord stream
 - [ ] **Phase 3: Replay Engine** - Drift-corrected real-time scheduler with clean cancellation and loop/stop semantics
-- [ ] **Phase 4: FakeTransport & Public API** - `createFakeTransport` factory ships dual ESM/CJS with the `ITrainerTransport` contract
+- [x] **Phase 4: FakeTransport & Public API** - `createFakeTransport` factory ships dual ESM/CJS with the `ITrainerTransport` contract (completed 2026-05-16)
 - [ ] **Phase 5: VeloWorld End-to-End Validation** - VeloWorld's dev/test build runs green against a real FIT replayed through FakeTransport on macOS and Linux
 
 ## Phase Details
@@ -101,7 +101,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-03-PLAN.md — Implement src/transport/fake-transport.ts factory + src/index.ts re-exports (API-01..06; D-API-04..20; closes Phase 3 followup WR-05) — Wave 2
 - [x] 04-04-PLAN.md — test/transport/fake-transport.test.ts unit tests (API-01..06; records-source fast path, vi.useFakeTimers) — Wave 3
 - [x] 04-05-PLAN.md — test/transport/path-and-buffer.test.ts integration tests against basic.fit (API-01, API-04; FitLoadError bubble) — Wave 3
-- [ ] 04-06-PLAN.md — test/transport/publish.test.ts build+publint+attw smoke test against built dist/ (API-07, API-08) — Wave 4
+- [x] 04-06-PLAN.md — test/transport/publish.test.ts build+publint+attw smoke test against built dist/ (API-07, API-08) — Wave 4
 **Notes**:
   - The `ITrainerTransport` interface owns the async semantics for `sendResistance` (force a microtask boundary even in Fake) and forbids any BLE-specific types in the import graph — these decisions ripple through every test and into v2's BlenoTransport, so settle them here.
   - Phase 4 is a thin glue phase per Phase 3 RESEARCH (line 96): the keystone is Plan 04-03 (~150-200 LOC factory composing existing Phase 1/2/3 building blocks). Plans 04-01 + 04-02 are foundation; 04-04/05 are tests; 04-06 is the publish-hygiene smoke test against the built artifact.
@@ -131,7 +131,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Vendored FTMS Codec | 0/TBD | Not started | - |
 | 2. FIT Loader & Normalization | 0/5 | Not started | - |
 | 3. Replay Engine | 0/TBD | Not started | - |
-| 4. FakeTransport & Public API | 5/6 | In Progress|  |
+| 4. FakeTransport & Public API | 6/6 | Complete   | 2026-05-16 |
 | 5. VeloWorld End-to-End Validation | 0/TBD | Not started | - |
 
 ## Risks & Coordination Points
