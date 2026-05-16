@@ -36,14 +36,14 @@ Requirements for v1 (FakeTransport library only). Each maps to roadmap phases.
 
 ### FakeTransport API
 
-- [ ] **API-01**: Library exports `createFakeTransport(config)` factory returning an `ITrainerTransport`-shaped object (`connect`, `disconnect`, `onData`, `sendResistance`)
-- [ ] **API-02**: `ITrainerTransport` interface is exported as a TypeScript type from the package root
-- [ ] **API-03**: `onData(handler)` accepts a `(data: DataView) => void` handler and returns a disposer for unsubscription
-- [ ] **API-04**: `sendResistance(grade)` is echo-only — it records the call and does NOT modify replayed power/cadence values
-- [ ] **API-05**: `received.resistance` is a public read-only array of every `sendResistance(grade)` call in order, for test assertions
-- [ ] **API-06**: `reset()` clears the resistance log and replay cursor so a single FakeTransport instance can be reused across `afterEach()`-isolated tests
-- [ ] **API-07**: Library ships as ESM-first with dual ESM/CJS publish, validated by `publint` and `@arethetypeswrong/cli`
-- [ ] **API-08**: Library is importable into TypeScript Node 24 projects with strict-mode types out of the box
+- [x] **API-01**: Library exports `createFakeTransport(config)` factory returning an `ITrainerTransport`-shaped object (`connect`, `disconnect`, `onData`, `sendResistance`)
+- [x] **API-02**: `ITrainerTransport` interface is exported as a TypeScript type from the package root
+- [x] **API-03**: `onData(handler)` accepts a `(data: DataView) => void` handler and returns a disposer for unsubscription
+- [x] **API-04**: `sendResistance(grade)` is echo-only — it records the call and does NOT modify replayed power/cadence values
+- [x] **API-05**: `received.resistance` is a public read-only array of every `sendResistance(grade)` call in order, for test assertions
+- [x] **API-06**: `reset()` clears the resistance log and replay cursor so a single FakeTransport instance can be reused across `afterEach()`-isolated tests
+- [x] **API-07**: Library ships as ESM-first with dual ESM/CJS publish, validated by `publint` and `@arethetypeswrong/cli`
+- [x] **API-08**: Library is importable into TypeScript Node 24 projects with strict-mode types out of the box
 
 ### VeloWorld Integration
 
@@ -123,14 +123,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REPL-04 | Phase 3 | Pending |
 | REPL-05 | Phase 3 | Pending |
 | REPL-06 | Phase 3 | Pending |
-| API-01 | Phase 4 | Pending |
-| API-02 | Phase 4 | Pending |
-| API-03 | Phase 4 | Pending |
-| API-04 | Phase 4 | Pending |
-| API-05 | Phase 4 | Pending |
-| API-06 | Phase 4 | Pending |
-| API-07 | Phase 4 | Pending |
-| API-08 | Phase 4 | Pending |
+| API-01 | Phase 4 | Complete |
+| API-02 | Phase 4 | Complete |
+| API-03 | Phase 4 | Complete |
+| API-04 | Phase 4 | Complete |
+| API-05 | Phase 4 | Complete |
+| API-06 | Phase 4 | Complete |
+| API-07 | Phase 4 | Complete |
+| API-08 | Phase 4 | Complete |
 | VW-01 | Phase 5 | Pending |
 | VW-02 | Phase 5 | Pending |
 | VW-03 | Phase 5 | Pending |

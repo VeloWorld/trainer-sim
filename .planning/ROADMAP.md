@@ -131,7 +131,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Vendored FTMS Codec | 0/TBD | Not started | - |
 | 2. FIT Loader & Normalization | 0/5 | Not started | - |
 | 3. Replay Engine | 0/TBD | Not started | - |
-| 4. FakeTransport & Public API | 6/6 | Complete   | 2026-05-16 |
+| 4. FakeTransport & Public API | 6/6 | Complete    | 2026-05-16 |
 | 5. VeloWorld End-to-End Validation | 0/TBD | Not started | - |
 
 ## Risks & Coordination Points
