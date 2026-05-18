@@ -520,6 +520,55 @@ npx tsx -e "
 
 **Warning signs:** N/A — this is a process pitfall, not a code one.
 
+### Pitfall 9: pnpm 10 strict-mode silently refuses to run trainer-sim's `prepare` hook on the consumer side
+
+**What goes wrong:** `pnpm install` in VW errors immediately after the Wave 0 sha is pinned in `apps/desktop/package.json`:
+
+```
+ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED
+Failed to prepare git-hosted package fetched from "git@github.com:VeloWorld/trainer-sim.git":
+The git-hosted package "trainer-sim@0.0.1" needs to execute build scripts but is not in the
+"onlyBuiltDependencies" allowlist.
+```
+
+The Wave 0 `prepare` hook (the entire point of Plan 05-01) cannot run; `node_modules/trainer-sim/dist/` is empty; downstream `import { createFakeTransport } from 'trainer-sim'` fails to resolve. Discovered during the 2026-05-18 Plan 05-02 execution attempt and recorded in `.planning/phases/05-veloworld-end-to-end-validation/05-02-DEVIATIONS.md` Gap 1.
+
+**Why it happens:** pnpm 10 (released 2024-Q4) defaults to strict-mode for lifecycle scripts. Any dependency not explicitly listed in the consumer's root `package.json` `pnpm.onlyBuiltDependencies` array is blocked from running `prepare` / `postinstall` / etc. This is pnpm's defense against runaway git-ref `prepare` hooks executing arbitrary code on `pnpm install`. Pitfall 1 (the npm-side `prepare` mechanics) is correct; Pitfall 4 (lockfile freshness) is correct; but pnpm 10 adds a NEW gate on top that those two pitfalls predate.
+
+**How to avoid:** The consumer (VW) MUST add `"trainer-sim"` to the `pnpm.onlyBuiltDependencies` array in its repository ROOT `package.json` (NOT `apps/desktop/package.json` — pnpm reads the workspace root for this config). VW's existing entry pre-replan is `["electron", "esbuild"]`; the post-replan entry is `["electron", "esbuild", "trainer-sim"]`. This is a one-line opt-in committed in the same PR as the dep pin.
+
+```jsonc
+// VW root package.json (NOT apps/desktop/package.json)
+"pnpm": {
+  "onlyBuiltDependencies": ["electron", "esbuild", "trainer-sim"]
+}
+```
+
+**Warning signs:** `pnpm install` exits non-zero with `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` referencing the trainer-sim git-host URL. `node_modules/trainer-sim/dist/index.js` does not exist after `pnpm install` returns "success" (silent partial-install in some pnpm minor versions).
+
+**Why this didn't surface in research:** The original research session inspected `apps/desktop/package.json`'s `packageManager` field but did not read VW's root `package.json` `pnpm.onlyBuiltDependencies`. The `pnpm install` smoke-test recipe in Pitfall 1 was documented but not actually executed against VW's tree before plan-creation. Future trainer-sim consumer integrations should read the consumer's root `package.json` `pnpm` block during research and run a smoke `pnpm install` if the trainer-sim git-ref is non-trivial.
+
+### Pitfall 10: "Files NOT to touch" claims must be audited with grep, not assumed
+
+**What goes wrong:** Plan 05-02's pre-replan `<vw_repo_paths>` block listed `apps/desktop/src/renderer/src/lib/__tests__/dev/dev-mode-save-flow.test.ts` under "Files NOT to touch" with the comment "unrelated test, do not touch". A pre-execution grep audit (`grep -rln 'dev/fit-loader\|dev/replay-scheduler' apps/desktop/src/`) revealed the file as the 4th consumer of the modules the plan deletes — lines 49, 64, 90, 105, 143, 150 reference both deleted modules; line 254 asserts the natural-exhaustion `'disconnected'` transition the adapter rewrite must wire through. Discovered during the 2026-05-18 Plan 05-02 execution attempt and recorded in `.planning/phases/05-veloworld-end-to-end-validation/05-02-DEVIATIONS.md` Gap 2.
+
+**Why it happens:** "Files NOT to touch" is asserted by the planner from intent (this file is unrelated to the rewrite) rather than from evidence (this file does/doesn't actually reference the symbols being changed). The plan-checker did not cross-validate the claim. Both layers trusted the assertion.
+
+**How to avoid:** For any plan that DELETES modules or RENAMES exports, the planner MUST run an exhaustive consumer grep on the deleted/renamed symbols and list every match in `files_modified` (or explicitly justify why a match is exempt). The plan-checker MUST re-run that grep against the live filesystem and flag any file the grep returns that is not in `files_modified` (or in the exempt list) as a BLOCKER. The exact grep used by Plan 05-02's post-replan plan-checker:
+
+```bash
+grep -rln 'dev/fit-loader\|dev/replay-scheduler' \
+  /Users/agniveshpatel/dev/agni21/veloworld-ride/apps/desktop/src/ \
+  /Users/agniveshpatel/dev/agni21/veloworld-ride/packages/ \
+  2>/dev/null | grep -v node_modules
+```
+
+The same defense-in-depth grep is now an acceptance criterion in the replanned 05-02 (Task 1's `<verify>` block expects exactly the to-be-rewritten consumers to surface).
+
+**Warning signs:** Pre-execution `grep` returns a file not in `files_modified`. The executor's first edit to a "not to touch" file would surface a TypeScript error (deleted import) that wasn't anticipated by `<verify>`.
+
+**Generalization:** Any plan whose actions include `git rm`, file deletions, or rename-via-codemod inherits this pitfall. The grep-cross-check is cheap (~1 second) and catches the "shallow consumer survey" failure mode that produced Plan 05-02's deviation. See also user memory `feedback_research_audit_grep_files_not_to_touch.md`.
+
 ## Code Examples
 
 ### Example 1: Wave 0 trainer-sim `prepare` hook
