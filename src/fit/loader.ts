@@ -15,9 +15,14 @@
 //     only, never throw. RESEARCH §Pattern 3 (which says "throw") is
 //     SUPERSEDED by D-FIT-10. Do NOT reintroduce a typed shadow-error class.
 
-import { readFile } from 'node:fs/promises';
-import { Buffer } from 'node:buffer';
-import { debuglog } from 'node:util';
+// D-VW-10 (Phase 5): trainer-sim is bundleable into browser/renderer contexts.
+// `node:fs/promises.readFile` is reachable only from `loadFitFromPath` (Node-
+// only by definition); the browser build aliases this shim to a stub that
+// throws a descriptive error if `loadFitFromPath` is called. The Buffer import
+// is gone — the loader operates on `Uint8Array` end-to-end. The debuglog
+// import routes through an isomorphic shim (real in Node, no-op in browser).
+import { readFile } from '../_internal/read-file.js';
+import { debuglog } from '../_internal/debuglog.js';
 // THE SINGLE PARSER IMPORT IN ALL OF src/. No other src/* file may import
 // this module — D-FIT-08 seam (acceptance grep enforces).
 import FitParser from 'fit-file-parser';
@@ -182,8 +187,15 @@ function makeFitFileParserSource(): FitRecordSource {
       const parser = new FitParser({ mode: 'list', force: false });
       let parsed: ParsedFitMinimal | undefined;
       let firstError: string | undefined;
-      const input = buffer instanceof Buffer ? buffer : Buffer.from(buffer);
-      parser.parse(input, (err, data) => {
+      // fit-file-parser's getArrayBuffer (binary.js:426) accepts anything with
+      // numeric `.length` and `[i]` indexing — Buffer or Uint8Array both pass
+      // at runtime. The package's `.d.ts` types it as `ArrayBuffer | Buffer`,
+      // so we cast through `unknown` to avoid a structural-Buffer comparison
+      // (Uint8Array is missing Buffer's ~70 Node-specific methods, but the
+      // parser never calls them — verified by reading binary.js:426). The
+      // cast is the cost of staying browser-bundleable without dragging in a
+      // Buffer polyfill.
+      parser.parse(buffer as unknown as ArrayBuffer, (err, data) => {
         if (err && firstError === undefined) firstError = err;
         else if (data && parsed === undefined) parsed = data as ParsedFitMinimal;
       });
@@ -240,9 +252,10 @@ function detectAndLogShadow(parsed: ParsedFitMinimal): void {
  *
  * Sync per D-FIT-07 — exploits the parser's sync-callback property.
  */
-export function loadFitFromBuffer(input: Buffer | Uint8Array): RideRecord[] {
-  // Buffer extends Uint8Array, so a Buffer flows through here unchanged.
-  const buf = input instanceof Uint8Array ? input : Buffer.from(input);
+export function loadFitFromBuffer(input: Uint8Array): RideRecord[] {
+  // Buffer extends Uint8Array, so existing Node consumers passing a Buffer
+  // continue to work — Buffer satisfies the Uint8Array type.
+  const buf = input;
   validateHeaderAndCrc(buf);
   const parsed = source.parse(buf);
   detectAndLogShadow(parsed);

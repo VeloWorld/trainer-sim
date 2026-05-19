@@ -140,13 +140,18 @@ describe('FakeTransport publish hygiene (API-07 / API-08) [slow]', () => {
     // Publish whitelist (Phase 1) — no source/test files leak into the tarball.
     expect(pkg.files).toEqual(['dist', 'README.md', 'LICENSE.md']);
 
-    // tsup.config.ts: single-entry build per D-API-08; dual format + dts.
+    // tsup.config.ts: dual-target build (Node + browser) per D-API-08 +
+    // D-VW-10. Node entry produces dual-format (ESM + CJS) with .d.ts/.d.cts;
+    // browser entry produces a single ESM bundle with internal alias swaps
+    // for the `_internal/*.browser.ts` shim variants.
     const tsupConfig = readFileSync(
       resolve(REPO_ROOT, 'tsup.config.ts'),
       'utf8',
     );
-    expect(tsupConfig).toContain("entry: ['src/index.ts']");
+    expect(tsupConfig).toContain("entry: { index: 'src/index.ts' }");
     expect(tsupConfig).toContain("format: ['esm', 'cjs']");
     expect(tsupConfig).toContain('dts: true');
+    expect(tsupConfig).toContain("entry: { 'index.browser': 'src/index.ts' }");
+    expect(tsupConfig).toContain("platform: 'browser'");
   });
 });

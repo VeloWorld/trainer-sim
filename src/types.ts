@@ -49,7 +49,9 @@
  *     posture is enforced at the type level only — no `Object.freeze`.
  */
 
-import type { Buffer } from 'node:buffer';
+// D-VW-10 (Phase 5): no `node:buffer` import. Buffer extends Uint8Array, so
+// existing Node consumers passing `Buffer.from(...)` continue to satisfy the
+// narrower `Uint8Array` constraint below — and the type stays browser-safe.
 
 /**
  * One sample from a parsed FIT ride file. The replay engine emits these to
@@ -154,7 +156,7 @@ export interface ITrainerTransport {
  */
 export type FakeTransportSource =
   | { path: string }
-  | { buffer: Buffer | Uint8Array }
+  | { buffer: Uint8Array }
   | { records: ReadonlyArray<RideRecord> };
 
 /**

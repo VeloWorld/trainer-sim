@@ -30,7 +30,7 @@
 //     affect us: we read only timestamp / power / cadence. Don't add reads of
 //     the elapsed-or-timer keys without re-checking that pitfall.
 
-import { debuglog } from 'node:util';
+import { debuglog } from '../_internal/debuglog.js';
 import type { RideRecord } from '../types.js';
 
 const log = debuglog('trainer-sim:fit');

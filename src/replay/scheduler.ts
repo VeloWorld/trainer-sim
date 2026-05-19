@@ -67,8 +67,8 @@
 // threat model documents WHY a future regression that imports the global
 // `setTimeout` here would re-introduce the §3 listener-leak antipattern.
 
-import { setTimeout as defaultSleep } from 'node:timers/promises';
-import { debuglog } from 'node:util';
+import { defaultSleep } from '../_internal/sleep.js';
+import { debuglog } from '../_internal/debuglog.js';
 import type { ReplayConfig } from './types.js';
 import type { RideRecord } from '../types.js';
 

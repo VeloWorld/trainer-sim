@@ -97,8 +97,8 @@
  *   - .planning/research/PITFALLS.md §12 (sendResistance microtask boundary).
  */
 
-import { EventEmitter } from 'node:events';
-import { debuglog } from 'node:util';
+import { EventEmitter } from '../_internal/event-emitter.js';
+import { debuglog } from '../_internal/debuglog.js';
 import { encodeIndoorBikeData } from '../ftms/indoor-bike-data.js';
 import { loadFitFromBuffer, loadFitFromPath } from '../fit/loader.js';
 // THE SINGLE Replay IMPORT IN ALL OF src/. No other src/* file may import

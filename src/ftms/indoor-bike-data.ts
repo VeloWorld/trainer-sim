@@ -26,9 +26,14 @@
  *   §3 — InstantaneousCadence has 0.5 rpm resolution; wire = round(rpm / 0.5).
  *        The FIELDS table is the only place the resolution lives.
  *   §4 — Multi-byte fields are LE; raw DataView writes default to BE.
- *        This file uses `Buffer.write{U,Int}16LE` exclusively (CONTEXT.md D-10);
- *        the LE suffix is in the method name, so a future reader cannot misread
- *        the byte order. Raw DataView mutation methods are banned in this file.
+ *        This file uses `DataView.set{Uint,Int}16(_, _, true)` exclusively
+ *        (the third arg `true` means little-endian) so byte order is explicit
+ *        at every call site. Previously this file used `Buffer.write{U,Int}16LE`
+ *        per CONTEXT.md D-10; that has been superseded to make trainer-sim
+ *        bundleable into browser/renderer contexts (Phase 5 / D-VW-10) where
+ *        Node's `Buffer` is unavailable. The wire format is byte-identical;
+ *        consumers (and the existing third-party-decoder round-trip test) see
+ *        no change.
  *   §5 — Wire-fractional values (cadence at 0.5, speed at 0.01) are rounded
  *        with `Math.round` before the integer write; otherwise sensor noise
  *        like `cadence = 73.3` silently truncates instead of rounding.
@@ -38,13 +43,16 @@
  *       D-04 (record shape), D-05 (bit-0 inversion verbatim),
  *       D-06 (both branches active), D-07 (public surface),
  *       D-08 (pure stateless), D-09 (FIELDS source-of-truth),
- *       D-10 (Buffer.write*LE only).
+ *       D-10 (Buffer.write*LE only — superseded by D-VW-10; see header above).
  *   - .planning/research/PITFALLS.md §1–§5.
  *   - PROJECT.md key decisions: "Vendor the FTMS encoder for v1";
  *     "DataView is the consumer-facing payload type".
  */
 
-import { Buffer } from 'node:buffer';
+// No imports — D-VW-10 (Phase 5): trainer-sim's encoder is bundleable into
+// browser/renderer contexts. Previously imported `Buffer` from `node:buffer`;
+// the rewrite uses the global `Uint8Array` + `DataView` instead. Wire format
+// unchanged.
 
 /**
  * Input record for the IndoorBikeData encoder. Per CONTEXT.md D-07, Phase 1
@@ -127,10 +135,10 @@ function payloadByteLength(record: IndoorBikeRecord): number {
 /**
  * Encode an IndoorBikeRecord to an FTMS IndoorBikeData characteristic payload.
  *
- * Pure, stateless function (CONTEXT.md D-08): allocates a fresh Buffer per
- * call, returns a DataView over its memory, and shares no state with previous
- * calls. The returned DataView aliases the freshly-allocated Buffer's
- * ArrayBuffer — the caller owns the bytes. Suitable for 1 Hz emission; a
+ * Pure, stateless function (CONTEXT.md D-08): allocates a fresh ArrayBuffer
+ * per call, returns a DataView over its memory, and shares no state with
+ * previous calls. The returned DataView is the caller-facing payload type
+ * (PROJECT.md mandate) and owns its bytes. Suitable for 1 Hz emission; a
  * buffer pool is a v2 concern only if soak tests show GC jank (PITFALLS.md
  * performance #2).
  *
@@ -139,27 +147,26 @@ function payloadByteLength(record: IndoorBikeRecord): number {
  * `record.speed === undefined`, in which case bit 0 of Flags is 1.
  */
 export function encodeIndoorBikeData(record: IndoorBikeRecord): DataView {
-  const buf = Buffer.alloc(payloadByteLength(record));
+  const view = new DataView(new ArrayBuffer(payloadByteLength(record)));
   let offset = 0;
 
-  // Flags (uint16 LE).
-  buf.writeUInt16LE(buildFlags(record), offset);
+  // Flags (uint16 LE — the `true` third arg is little-endian; PITFALLS.md §4).
+  view.setUint16(offset, buildFlags(record), true);
   offset += 2;
 
   // Speed (uint16 LE, 0.01 km/h resolution) — when present, comes BEFORE cadence per spec field order.
   if (record.speed !== undefined) {
-    buf.writeUInt16LE(Math.round(record.speed / FIELDS.instantaneousSpeed.resolution), offset);
+    view.setUint16(offset, Math.round(record.speed / FIELDS.instantaneousSpeed.resolution), true);
     offset += 2;
   }
 
   // Cadence (uint16 LE, 0.5 rpm resolution).
-  buf.writeUInt16LE(Math.round(record.cadence / FIELDS.instantaneousCadence.resolution), offset);
+  view.setUint16(offset, Math.round(record.cadence / FIELDS.instantaneousCadence.resolution), true);
   offset += 2;
 
-  // Power (sint16 LE, 1 W resolution) — sign matters! writeInt16LE, NOT writeUInt16LE (PITFALLS.md #2).
-  buf.writeInt16LE(record.power, offset);
+  // Power (sint16 LE, 1 W resolution) — sign matters! setInt16, NOT setUint16 (PITFALLS.md §2).
+  view.setInt16(offset, record.power, true);
   offset += 2;
 
-  // DataView over the same memory; no copy. PROJECT.md mandates DataView as the consumer-facing payload type.
-  return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  return view;
 }
