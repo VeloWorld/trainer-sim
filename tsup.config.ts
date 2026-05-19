@@ -1,5 +1,16 @@
 import { defineConfig } from 'tsup';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Resolve relative to THIS config file rather than `process.cwd()` (Phase 5
+// / WR-03). The browser-alias plugin below maps `_internal/*.js` imports to
+// their `.browser.ts` siblings in `src/_internal/`; with `process.cwd()`,
+// invoking tsup from a parent directory or a monorepo wrapper would resolve
+// the alias against the wrong root and either fail the build or — worse —
+// fall through to the Node variant, producing a "browser" bundle with
+// `node:fs/promises` imports. Anchoring on `__dirname` makes the build
+// invocation-cwd-independent.
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Dual ESM+CJS build for Node + a third ESM-only build for browser/renderer
 // contexts (Phase 5 / D-VW-10). All three share src/ — the browser build uses
@@ -55,7 +66,7 @@ export default defineConfig([
             const name = args.path.split('/').pop() as string;
             const replacement = browserAliasMap[name];
             if (!replacement) return undefined;
-            return { path: resolve(process.cwd(), 'src', '_internal', replacement) };
+            return { path: resolve(__dirname, 'src', '_internal', replacement) };
           });
         },
       },
