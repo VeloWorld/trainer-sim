@@ -118,9 +118,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. CI runs the VeloWorld E2E suite green on both macOS and Linux on Node 24
 **Plans**: 4 plans
 - [x] 05-01-PLAN.md — Wave 0: trainer-sim package.json prepare hook + agni21->VeloWorld doc fix + smoke-test + sha capture (D-VW-08 contract-gap fix) — Wave 0
-- [ ] 05-02-PLAN.md — Wave 1a: VW dep pin + delete vendored modules + adapter rewrite (~80 LOC) + test rewrite + CI matrix; local-green gate — Wave 1
-- [ ] 05-03-PLAN.md — Wave 1b: push VW feature branch, open PR, monitor cross-platform CI to green per D-VW-08 iteration tree, human-confirmed merge — Wave 1
-- [ ] 05-04-PLAN.md — Wave 2: compose 05-VERIFICATION.md with the 5-item D-VW-09 acceptance bundle — Wave 2
+- [x] 05-02-PLAN.md — Wave 1a: VW dep pin + delete vendored modules + adapter rewrite (~80 LOC) + test rewrite + CI matrix; local-green gate — Wave 1
+- [x] 05-03-PLAN.md — Wave 1b: push VW feature branch, open PR, monitor cross-platform CI to green per D-VW-08 iteration tree, human-confirmed merge — Wave 1
+- [x] 05-04-PLAN.md — Wave 2: compose 05-VERIFICATION.md with the 5-item D-VW-09 acceptance bundle — Wave 2
 **Notes**:
   - Cross-repo coordination point: the integration target lives in the VeloWorld repo, not this one. Plan-phase will need a coordinated workflow that pulls VeloWorld's existing `ITrainerTransport` consumer into a smoke test (or stands up a temporary integration harness inside trainer-sim that mirrors VeloWorld's decoder usage). Decide the form before planning starts.
   - The acceptance gate per PROJECT.md: until this phase passes, v1 is not done — green unit tests in Phases 1–4 are necessary but not sufficient.
