@@ -25,12 +25,13 @@ at a real Garmin/Wahoo FIT file.
 - [x] Replay timing is real-time and respects FIT record timestamps (configurable speed multiplier and loop/stop-at-end) — validated in Phase 3 + surfaced through FakeTransport in Phase 4 (REPL-01..06)
 - [x] FakeTransport emits FTMS IndoorBikeData-encoded `DataView` payloads to subscribers (codec vendored in this repo) — validated in Phase 4 (per-record collapse in `src/transport/fake-transport.ts:204-207` + Phase 1 encoder)
 - [x] `sendResistance(grade)` is recorded for test assertions and does not modify replayed values (echo-only) — validated in Phase 4 (API-04, API-05; echo-only proven against FIT-driven payload in `test/transport/path-and-buffer.test.ts` Group 4)
+- [x] VeloWorld's dev/test build runs end-to-end against FakeTransport with a real FIT file — validated in Phase 5 via the cross-repo PR cycle: VW PR https://github.com/VeloWorld/veloworld-ride/pull/19 merged at `ba87fee`; both `ci (ubuntu-latest)` and `ci (macos-latest)` jobs SUCCESS on Node 24 against trainer-sim sha `8fac5dd`; 5-item D-VW-09 acceptance bundle in `.planning/phases/05-veloworld-end-to-end-validation/05-VERIFICATION.md`
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] VeloWorld's dev/test build runs end-to-end against FakeTransport with a real FIT file — Phase 5
+- (none — all v1 requirements validated; ready to ship)
 
 ### Out of Scope
 
@@ -111,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-16 after Phase 4 (FakeTransport & Public API) completion — `createFakeTransport(config)` factory ships at `src/transport/fake-transport.ts` (267 LOC) composing Phase 3's `Replay`, Phase 2's loader, and Phase 1's encoder behind the canonically-defined `ITrainerTransport` contract in `src/types.ts`. Public surface adds `createFakeTransport` + 3 type aliases to `src/index.ts`. Dual ESM/CJS publish hygiene validated by `publint` + `@arethetypeswrong/cli` against the built `dist/` (115/117 tests pass — same 2 intentional opt-in skips as Phase 3). Code review caught 3 BLOCKERs in the keystone factory (CR-01 connect race; CR-02 empty-records deadlock; CR-03 unhandledRejection from throwing `'complete'` listener) — all 3 fixed inline with Group 10 regression tests; mirrors the Phase 3 BLOCKER discipline. The five v1 FakeTransport-related PROJECT requirements move to Validated; only `VeloWorld E2E` remains Active for Phase 5.*
+*Last updated: 2026-05-19 after Phase 5 (VeloWorld End-to-End Validation) completion — v1 acceptance gate satisfied. The cross-repo PR cycle landed: VW PR #19 (https://github.com/VeloWorld/veloworld-ride/pull/19) squash-merged at `ba87fee` with both `ci (ubuntu-latest)` and `ci (macos-latest)` jobs SUCCESS on Node 24, against trainer-sim sha `8fac5dd`. Phase 5 evolved trainer-sim's build infrastructure across 4 Wave-0.x revisions (D-VW-10 path) to satisfy VeloWorld's Vite-bundled Electron renderer: dual Node + browser `tsup` builds via `"browser"` exports condition, `_internal/*` shim layer (debuglog/EventEmitter/sleep/readFile, each with `.ts` Node + `.browser.ts` browser variants), encoder migrated from Buffer to DataView (wire format byte-identical), and `dist/` committed to track for git-ref consumers. trainer-sim's `ITrainerTransport` contract did NOT widen during iteration — only narrowing changes (`FakeTransportSource.buffer` to `Uint8Array`). VW's 9-method ITrainerTransport stayed VW-owned per Anti-Pattern 6. All 115 trainer-sim tests pass; publint + attw all green. v1 is shippable per the acceptance gate. Only outstanding work: 5 advisory WARNING items in `05-REVIEW.md` (encoder overflow guard, EventEmitter once/off contract, tsup cwd fragility, dist staleness risk, asymmetric clean) — non-blocking for v1; queued for v1.x.*
