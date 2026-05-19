@@ -19,17 +19,32 @@ function buildFlags(record) {
 function payloadByteLength(record) {
   return 6 + (record.speed !== void 0 ? 2 : 0);
 }
+function assertInt16(name, v) {
+  if (!Number.isInteger(v) || v < -32768 || v > 32767) {
+    throw new RangeError(`${name} out of sint16 range [-32768..32767]: ${v}`);
+  }
+}
+function assertUint16(name, v) {
+  if (!Number.isInteger(v) || v < 0 || v > 65535) {
+    throw new RangeError(`${name} out of uint16 range [0..65535]: ${v}`);
+  }
+}
 function encodeIndoorBikeData(record) {
   const view = new DataView(new ArrayBuffer(payloadByteLength(record)));
   let offset = 0;
   view.setUint16(offset, buildFlags(record), true);
   offset += 2;
   if (record.speed !== void 0) {
-    view.setUint16(offset, Math.round(record.speed / FIELDS.instantaneousSpeed.resolution), true);
+    const speedWire = Math.round(record.speed / FIELDS.instantaneousSpeed.resolution);
+    assertUint16("speed", speedWire);
+    view.setUint16(offset, speedWire, true);
     offset += 2;
   }
-  view.setUint16(offset, Math.round(record.cadence / FIELDS.instantaneousCadence.resolution), true);
+  const cadenceWire = Math.round(record.cadence / FIELDS.instantaneousCadence.resolution);
+  assertUint16("cadence", cadenceWire);
+  view.setUint16(offset, cadenceWire, true);
   offset += 2;
+  assertInt16("power", record.power);
   view.setInt16(offset, record.power, true);
   offset += 2;
   return view;

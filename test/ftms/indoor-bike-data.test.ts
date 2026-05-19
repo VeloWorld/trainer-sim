@@ -179,3 +179,92 @@ describe('FTMS encoder — endianness sanity (PITFALLS.md #4)', () => {
     expect(view.getUint16(2, false)).toBe(46080);
   });
 });
+
+describe('FTMS encoder — overflow guards (Phase 5 / WR-01)', () => {
+  // The Phase 5 DataView migration replaced `Buffer.writeInt16LE` (which
+  // throws RangeError on overflow) with `DataView.setInt16` (which silently
+  // ToInt16-wraps). The encoder restores the throw-on-overflow contract
+  // explicitly via assertInt16/assertUint16, gating each wire write. These
+  // tests lock in that contract — a future regression that drops the guards
+  // will silently emit wrapped values to FTMS consumers, so a deterministic
+  // throw is the safer surface.
+
+  it('throws RangeError on power > 32767 (sint16 max+1)', () => {
+    expect(() => encodeIndoorBikeData({ power: 32_768, cadence: 80 })).toThrow(
+      RangeError,
+    );
+    expect(() => encodeIndoorBikeData({ power: 50_000, cadence: 80 })).toThrow(
+      /power.*sint16/,
+    );
+  });
+
+  it('throws RangeError on power < -32768 (sint16 min-1)', () => {
+    expect(() => encodeIndoorBikeData({ power: -32_769, cadence: 80 })).toThrow(
+      RangeError,
+    );
+    expect(() => encodeIndoorBikeData({ power: -50_000, cadence: 80 })).toThrow(
+      /power.*sint16/,
+    );
+  });
+
+  it('throws RangeError on non-integer power (would silently truncate)', () => {
+    expect(() => encodeIndoorBikeData({ power: 200.5, cadence: 80 })).toThrow(
+      RangeError,
+    );
+  });
+
+  it('accepts the full sint16 boundary values for power', () => {
+    expect(() =>
+      encodeIndoorBikeData({ power: 32_767, cadence: 80 }),
+    ).not.toThrow();
+    expect(() =>
+      encodeIndoorBikeData({ power: -32_768, cadence: 80 }),
+    ).not.toThrow();
+  });
+
+  it('throws RangeError on cadence whose wire value exceeds uint16 (post-2x scaling)', () => {
+    // wire = round(rpm / 0.5) = rpm × 2; 32_768 rpm × 2 = 65_536, one over uint16 max.
+    expect(() =>
+      encodeIndoorBikeData({ power: 200, cadence: 32_768 }),
+    ).toThrow(/cadence.*uint16/);
+    // 200_000 rpm is obviously absurd but proves the message names the field.
+    expect(() =>
+      encodeIndoorBikeData({ power: 200, cadence: 200_000 }),
+    ).toThrow(RangeError);
+  });
+
+  it('throws RangeError on negative cadence (uint16 lower bound)', () => {
+    // -0.5 rpm scales to wire -1 which fails uint16; this catches a caller
+    // that forgot abs() on a sensor delta.
+    expect(() => encodeIndoorBikeData({ power: 200, cadence: -1 })).toThrow(
+      /cadence.*uint16/,
+    );
+  });
+
+  it('accepts the uint16 wire boundary for cadence (32_767.5 rpm → wire 65_535)', () => {
+    expect(() =>
+      encodeIndoorBikeData({ power: 200, cadence: 32_767.5 }),
+    ).not.toThrow();
+  });
+
+  it('throws RangeError on speed whose wire value exceeds uint16 (post-100x scaling)', () => {
+    // wire = round(km/h / 0.01) = km/h × 100; 656 km/h × 100 = 65_600, one
+    // over uint16 max. A real trainer would never emit this, but a
+    // unit-confusion bug (m/s as km/h) could.
+    expect(() =>
+      encodeIndoorBikeData({ power: 200, cadence: 80, speed: 656 }),
+    ).toThrow(/speed.*uint16/);
+  });
+
+  it('throws RangeError on negative speed', () => {
+    expect(() =>
+      encodeIndoorBikeData({ power: 200, cadence: 80, speed: -0.01 }),
+    ).toThrow(/speed.*uint16/);
+  });
+
+  it('accepts the uint16 wire boundary for speed (655.35 km/h → wire 65_535)', () => {
+    expect(() =>
+      encodeIndoorBikeData({ power: 200, cadence: 80, speed: 655.35 }),
+    ).not.toThrow();
+  });
+});

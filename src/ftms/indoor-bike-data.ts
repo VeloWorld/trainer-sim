@@ -20,7 +20,11 @@
  *        speed-present case works the moment a future caller passes `speed`.
  *   §2 — InstantaneousPower is sint16 (the spec is unambiguous; Auuki's source
  *        treats it as uint16, which is a known Auuki bug). Power is written via
- *        `writeInt16LE`. The FIELDS table marks `'sint16'` and a developer who
+ *        `setInt16(_, _, true)` and gated by `assertInt16` (Phase 5 / WR-01)
+ *        so out-of-range values throw `RangeError` instead of silently
+ *        wrapping via `ToInt16` (the DataView migration would otherwise
+ *        regress the throw-on-overflow contract that `Buffer.writeInt16LE`
+ *        provided). The FIELDS table marks `'sint16'` and a developer who
  *        "fixes" it to `'uint16'` to match Auuki breaks the assertion that
  *        plan 04 ships.
  *   §3 — InstantaneousCadence has 0.5 rpm resolution; wire = round(rpm / 0.5).
@@ -133,6 +137,34 @@ function payloadByteLength(record: IndoorBikeRecord): number {
 }
 
 /**
+ * Range guards (Phase 5 / WR-01). The DataView migration replaced
+ * `Buffer.write{Int,Uint}16LE` (which throws `RangeError` on overflow) with
+ * `DataView.set{Int,Uint}16` (which silently `ToInt16` / `ToUint16` wraps
+ * the value — see PITFALLS.md §2 and the file header). To preserve the
+ * "fail loud at the encode boundary" contract documented on
+ * `IndoorBikeRecord.power`, every wire-integer write is preceded by an
+ * explicit assertion. The error message names the offending field so a
+ * misbehaving caller (corrupted FIT row, programming bug) is debuggable
+ * without inspecting bytes.
+ *
+ * `cadence` and `speed` are scaled before the range check, so the limit is
+ * applied to the WIRE value (post-rounding integer) — a 32_768 rpm cadence
+ * scales to a 65_536 wire value which fails the uint16 check; a 32_767.5
+ * rpm cadence rounds to 65_535 and passes (legal under the wire encoding
+ * even though no real trainer emits it).
+ */
+function assertInt16(name: string, v: number): void {
+  if (!Number.isInteger(v) || v < -0x8000 || v > 0x7fff) {
+    throw new RangeError(`${name} out of sint16 range [-32768..32767]: ${v}`);
+  }
+}
+function assertUint16(name: string, v: number): void {
+  if (!Number.isInteger(v) || v < 0 || v > 0xffff) {
+    throw new RangeError(`${name} out of uint16 range [0..65535]: ${v}`);
+  }
+}
+
+/**
  * Encode an IndoorBikeRecord to an FTMS IndoorBikeData characteristic payload.
  *
  * Pure, stateless function (CONTEXT.md D-08): allocates a fresh ArrayBuffer
@@ -156,15 +188,20 @@ export function encodeIndoorBikeData(record: IndoorBikeRecord): DataView {
 
   // Speed (uint16 LE, 0.01 km/h resolution) — when present, comes BEFORE cadence per spec field order.
   if (record.speed !== undefined) {
-    view.setUint16(offset, Math.round(record.speed / FIELDS.instantaneousSpeed.resolution), true);
+    const speedWire = Math.round(record.speed / FIELDS.instantaneousSpeed.resolution);
+    assertUint16('speed', speedWire);
+    view.setUint16(offset, speedWire, true);
     offset += 2;
   }
 
   // Cadence (uint16 LE, 0.5 rpm resolution).
-  view.setUint16(offset, Math.round(record.cadence / FIELDS.instantaneousCadence.resolution), true);
+  const cadenceWire = Math.round(record.cadence / FIELDS.instantaneousCadence.resolution);
+  assertUint16('cadence', cadenceWire);
+  view.setUint16(offset, cadenceWire, true);
   offset += 2;
 
   // Power (sint16 LE, 1 W resolution) — sign matters! setInt16, NOT setUint16 (PITFALLS.md §2).
+  assertInt16('power', record.power);
   view.setInt16(offset, record.power, true);
   offset += 2;
 

@@ -20,7 +20,11 @@
  *        speed-present case works the moment a future caller passes `speed`.
  *   §2 — InstantaneousPower is sint16 (the spec is unambiguous; Auuki's source
  *        treats it as uint16, which is a known Auuki bug). Power is written via
- *        `writeInt16LE`. The FIELDS table marks `'sint16'` and a developer who
+ *        `setInt16(_, _, true)` and gated by `assertInt16` (Phase 5 / WR-01)
+ *        so out-of-range values throw `RangeError` instead of silently
+ *        wrapping via `ToInt16` (the DataView migration would otherwise
+ *        regress the throw-on-overflow contract that `Buffer.writeInt16LE`
+ *        provided). The FIELDS table marks `'sint16'` and a developer who
  *        "fixes" it to `'uint16'` to match Auuki breaks the assertion that
  *        plan 04 ships.
  *   §3 — InstantaneousCadence has 0.5 rpm resolution; wire = round(rpm / 0.5).
