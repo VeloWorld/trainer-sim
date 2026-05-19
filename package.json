@@ -34,7 +34,6 @@
   ],
   "scripts": {
     "build": "tsup",
-    "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
