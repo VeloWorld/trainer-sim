@@ -1,5 +1,5 @@
 {
-  "model_profile": "inherit",
+  "model_profile": "quality",
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
@@ -7,7 +7,7 @@
   "firecrawl": false,
   "exa_search": false,
   "git": {
-    "branching_strategy": "none",
+    "branching_strategy": "phase",
     "phase_branch_template": "feat/phase-{phase}-{slug}",
     "milestone_branch_template": "feat/{milestone}-{slug}",
     "quick_branch_template": null
