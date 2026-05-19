@@ -5,7 +5,7 @@ milestone_name: milestone
 status: milestone_complete
 stopped_at: Phase 5 context gathered
 last_updated: "2026-05-18T15:33:10.448Z"
-last_activity: 2026-05-18 -- Phase 05 execution started
+last_activity: 2026-05-19 -- Completed quick task 260519-ub8: v0.1.0 release
 progress:
   total_phases: 5
   completed_phases: 5
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 Phase: 05
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-05-19
+Last activity: 2026-05-19 - Completed quick task 260519-ub8: v0.1.0 release
 
 Progress: [██░░░░░░░░] 25%
 
@@ -83,6 +83,12 @@ None yet.
 - Phase 5: VeloWorld lives in a separate repo; integration-test form to be decided in plan-phase
 - Phase 2 followups (advisory, from 02-REVIEW.md): WR-01 signed-shift on dataLength for ≥2GB files; WR-03 records lacking timestamp silently dropped; WR-05 CRC-16/ARC table duplicated across loader/scrub/minimal-fit-bytes
 - Phase 3 followups (advisory, from 03-REVIEW.md): WR-02 currentState async transition not documented; WR-05 Replay.start() doesn't validate speed/maxEmissionHz (NaN/0/negative); WR-04 config JSDoc claims "frozen" without Object.freeze; IN-01 fakeAwareSleep duplicated in 4 test files
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260519-ub8 | v0.1.0 release: bump version, README, CHANGELOG, annotated tag, GitHub release | 2026-05-19 | 524aeab | [260519-ub8-bump-version-to-0-1-0-update-readme-crea](./quick/260519-ub8-bump-version-to-0-1-0-update-readme-crea/) |
 
 ## Deferred Items
 
