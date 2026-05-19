@@ -1,6 +1,6 @@
 {
   "name": "trainer-sim",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Standalone Node.js library that impersonates a BLE FTMS smart trainer by replaying pre-recorded FIT files.",
   "license": "MIT",
   "type": "module",
