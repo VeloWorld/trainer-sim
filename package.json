@@ -33,6 +33,7 @@
     "LICENSE.md"
   ],
   "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",

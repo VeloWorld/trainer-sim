@@ -37,6 +37,14 @@ const browserAliasMap: Record<string, string> = {
   'read-file.js': 'read-file.browser.ts',
 };
 
+// Clean is performed by the `prebuild` npm script (`rm -rf dist`) before
+// tsup runs (Phase 5 / WR-05). Both configs set `clean: false` so order /
+// parallelism between them is irrelevant: neither config can wipe the
+// other's output mid-build. Previously the Node config had `clean: true`
+// and the browser config had `clean: false`, which only worked under
+// tsup's serial array-execution implementation detail — a future tsup
+// release that runs configs in parallel (or a refactor that reorders
+// the array) would race and produce a corrupt dist/.
 export default defineConfig([
   {
     entry: { index: 'src/index.ts' },
@@ -44,7 +52,7 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     treeshake: true,
-    clean: true,
+    clean: false,
     target: 'node24',
     outDir: 'dist',
   },
