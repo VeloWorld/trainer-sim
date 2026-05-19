@@ -8,9 +8,28 @@
  * provide): the polyfill is large (~7 KB minified), runtime-version-dependent,
  * and adds a transitive dependency. trainer-sim's event surface is tiny and
  * fixed, so an inline implementation is simpler and smaller.
+ *
+ * Phase 5 / WR-02 contract note: `once(event, fn)` MUST be removable via
+ * `off(event, fn)` even though `once` registers a wrapper internally. Node's
+ * `EventEmitter._onceWrap` attaches the original listener on `wrapper.listener`
+ * and `removeListener` walks the array looking for either `entry === fn` or
+ * `entry.listener === fn`. This shim mirrors that protocol with the same
+ * `wrapper.listener` property name (NOT `_originalListener`) so that any
+ * consumer code that relied on the documented Node convention behaves
+ * identically across the dual build.
  */
 
 type Listener<T extends ReadonlyArray<unknown>> = (...args: T) => void;
+
+/**
+ * Internal wrapper shape used by `once` to track the original listener.
+ * Field name `listener` matches `node:events`'s public `kListener`-aliased
+ * convention so the dual-build (`once` + `off(originalFn)`) contract holds.
+ */
+type OnceWrapper<T extends ReadonlyArray<unknown>> = Listener<T> & {
+  listener?: Listener<T>;
+};
+
 type EventMap = Record<string, ReadonlyArray<unknown>>;
 
 export class EventEmitter<E extends EventMap = EventMap> {
@@ -24,16 +43,26 @@ export class EventEmitter<E extends EventMap = EventMap> {
   off<K extends keyof E>(event: K, listener: Listener<E[K]>): this {
     const arr = this.listeners[event];
     if (!arr) return this;
-    const idx = arr.indexOf(listener);
+    // Match either the listener directly OR a once-wrapper whose .listener
+    // property points at the original function (Node's contract — WR-02).
+    const idx = arr.findIndex(
+      (entry) =>
+        entry === listener ||
+        (entry as OnceWrapper<E[K]>).listener === listener,
+    );
     if (idx !== -1) arr.splice(idx, 1);
     return this;
   }
 
   once<K extends keyof E>(event: K, listener: Listener<E[K]>): this {
     const wrapper = ((...args: E[K]) => {
+      // Remove via the wrapper itself so we don't accidentally take the
+      // `entry.listener === fn` branch and remove an unrelated `on(_, listener)`
+      // registration of the same function.
       this.off(event, wrapper);
       listener(...args);
-    }) as Listener<E[K]>;
+    }) as OnceWrapper<E[K]>;
+    wrapper.listener = listener;
     return this.on(event, wrapper);
   }
 

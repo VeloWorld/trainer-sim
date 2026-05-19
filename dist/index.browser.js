@@ -250,7 +250,9 @@ var EventEmitter = class {
   off(event, listener) {
     const arr = this.listeners[event];
     if (!arr) return this;
-    const idx = arr.indexOf(listener);
+    const idx = arr.findIndex(
+      (entry) => entry === listener || entry.listener === listener
+    );
     if (idx !== -1) arr.splice(idx, 1);
     return this;
   }
@@ -259,6 +261,7 @@ var EventEmitter = class {
       this.off(event, wrapper);
       listener(...args);
     });
+    wrapper.listener = listener;
     return this.on(event, wrapper);
   }
   emit(event, ...args) {
