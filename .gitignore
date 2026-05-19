@@ -1,9 +1,11 @@
 node_modules
 # `dist/` is intentionally TRACKED so consumers installing trainer-sim via
 # git-ref (e.g. VeloWorld/veloworld-ride) receive prebuilt artifacts
-# directly. The `prepare` lifecycle hook still rebuilds them on consumer
-# install, but a corrupted prepare run no longer breaks downstream
-# typecheck — the committed dist is the source of truth.
+# directly. The `prepare` lifecycle hook was removed in Phase 5, so
+# consumers do NOT rebuild on install — the committed `dist/` IS the
+# source of truth. The `prepublishOnly` script + `dist-matches-src`
+# guard in `publish.test.ts` (Phase 5 / WR-04) enforce that the tracked
+# `dist/` is rebuilt from the current `src/` before publish/test.
 coverage
 .DS_Store
 *.log

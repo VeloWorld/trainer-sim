@@ -103,6 +103,30 @@ describe('FakeTransport publish hygiene (API-07 / API-08) [slow]', () => {
   });
 
   it(
+    'tracked dist/ matches a fresh build of src/ (Phase 5 / WR-04)',
+    { timeout: 60_000 },
+    () => {
+      // The "prepare" lifecycle hook was removed in Phase 5 (D-VW-10) so
+      // consumers do NOT rebuild on install — the committed dist/ IS the
+      // source of truth for git-ref consumers like VeloWorld. This test
+      // catches the "forgot to run npm run build before commit" failure
+      // mode by rebuilding and asserting `git diff --quiet -- dist/`. If
+      // it fails locally, run `npm run build && git add dist/` and re-run
+      // tests.
+      runScript('build');
+      const diff = execSync('git diff --stat -- dist/', {
+        cwd: REPO_ROOT,
+        stdio: 'pipe',
+        encoding: 'utf8',
+      });
+      expect(
+        diff.trim(),
+        `dist/ is out of date vs src/ — run 'npm run build' and commit:\n${diff}`,
+      ).toBe('');
+    },
+  );
+
+  it(
     'attw --pack . exits 0 against the built dist/ (API-08)',
     { timeout: 60_000 },
     () => {

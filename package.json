@@ -40,7 +40,8 @@
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "validate:publint": "publint",
     "validate:attw": "attw --pack .",
-    "validate": "npm run build && npm run validate:publint && npm run validate:attw",
+    "validate:dist": "npm run build && git diff --quiet -- dist/ || (echo \"dist/ is out of date — run 'npm run build' and commit\" >&2; git diff --stat -- dist/ >&2; exit 1)",
+    "validate": "npm run validate:dist && npm run validate:publint && npm run validate:attw",
     "prepublishOnly": "npm run validate && npm test"
   },
   "devDependencies": {
